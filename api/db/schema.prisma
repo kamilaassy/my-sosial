@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model comment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  postId    Int
+  authorId  Int
+  createdAt DateTime @default(now())
+  user      user     @relation(fields: [authorId], references: [id], map: "Comment_authorId_fkey")
+  post      post     @relation(fields: [postId], references: [id], map: "Comment_postId_fkey")
+
+  @@index([authorId], map: "Comment_authorId_fkey")
+  @@index([postId], map: "Comment_postId_fkey")
+}
+
+model follow {
+  id                            Int      @id @default(autoincrement())
+  followerId                    Int
+  followingId                   Int
+  createdAt                     DateTime @default(now())
+  user_follow_followerIdTouser  user     @relation("follow_followerIdTouser", fields: [followerId], references: [id], map: "Follow_followerId_fkey")
+  user_follow_followingIdTouser user     @relation("follow_followingIdTouser", fields: [followingId], references: [id], map: "Follow_followingId_fkey")
+
+  @@unique([followerId, followingId], map: "Follow_followerId_followingId_key")
+  @@index([followingId], map: "Follow_followingId_fkey")
+}
+
+model like {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  postId    Int
+  createdAt DateTime @default(now())
+  post      post     @relation(fields: [postId], references: [id], map: "Like_postId_fkey")
+  user      user     @relation(fields: [userId], references: [id], map: "Like_userId_fkey")
+
+  @@unique([userId, postId], map: "Like_userId_postId_key")
+  @@index([postId], map: "Like_postId_fkey")
+}
+
+model post {
+  id        Int       @id @default(autoincrement())
+  content   String?
+  imageUrl  String?
+  authorId  Int
+  createdAt DateTime  @default(now())
+  comment   comment[]
+  like      like[]
+  user      user      @relation(fields: [authorId], references: [id], map: "Post_authorId_fkey")
+
+  @@index([authorId], map: "Post_authorId_fkey")
+}
+
+model user {
+  id                              Int       @id @default(autoincrement())
+  email                           String    @unique(map: "User_email_key")
+  hashedPassword                  String
+  name                            String?
+  bio                             String?
+  avatarUrl                       String?
+  createdAt                       DateTime  @default(now())
+  role                            String    @default("user")
+  salt                            String
+  resetToken                      String?
+  resetTokenExpiresAt             DateTime?
+  comment                         comment[]
+  follow_follow_followerIdTouser  follow[]  @relation("follow_followerIdTouser")
+  follow_follow_followingIdTouser follow[]  @relation("follow_followingIdTouser")
+  like                            like[]
+  post                            post[]
+}
