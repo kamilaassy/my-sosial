@@ -1,16 +1,22 @@
 import dns from 'dns'
 
-import type { UserConfig } from 'vite'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv, UserConfig } from 'vite'
 
 import redwood from '@redwoodjs/vite'
 
-// So that Vite will load on localhost instead of `127.0.0.1`.
-// See: https://vitejs.dev/config/server-options.html#server-host.
 dns.setDefaultResultOrder('verbatim')
 
-const viteConfig: UserConfig = {
-  plugins: [redwood()],
-}
+export default defineConfig(({ mode }) => {
+  // Load all environment variables, including VITE_*
+  const env = loadEnv(mode, process.cwd(), '')
 
-export default defineConfig(viteConfig)
+  const viteConfig: UserConfig = {
+    plugins: [redwood()],
+    define: {
+      // Make env variables available to the client
+      'import.meta.env': env,
+    },
+  }
+
+  return viteConfig
+})

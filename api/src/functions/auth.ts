@@ -136,7 +136,7 @@ export const handler = async (
           email: username,
           hashedPassword: hashedPassword,
           salt: salt,
-          // name: userAttributes.name
+          role: 'user',
         },
       })
     },
@@ -179,7 +179,7 @@ export const handler = async (
     // client when invoking a handler that returns a user (like forgotPassword
     // and signup). This list should be as small as possible to be sure not to
     // leak any sensitive information to the client.
-    allowedUserFields: ['id', 'email'],
+    allowedUserFields: ['id', 'email', 'role', 'isBanned'],
 
     // Specifies attributes on the cookie that dbAuth sets in order to remember
     // who is logged in. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#restrict_access_to_cookies
@@ -202,6 +202,8 @@ export const handler = async (
     resetPassword: resetPasswordOptions,
     signup: signupOptions,
   })
+
+  console.log('SESSION CALL:', event.path, event.httpMethod)
 
   return await authHandler.invoke()
 }

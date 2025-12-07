@@ -1,13 +1,25 @@
 export const schema = gql`
+  type UserEmbed {
+    id: Int!
+    name: String
+    email: String!
+    avatarUrl: String
+  }
+
+  type PostLikeEmbed {
+    id: Int!
+    userId: Int!
+  }
+
   type Post {
     id: Int!
     content: String
     imageUrl: String
-    author: User!
-    authorId: Int!
     createdAt: DateTime!
-    comments: [Comment]!
-    likes: [Like]!
+
+    user: UserEmbed!
+    comments: [Comment!]!
+    postLikes: [PostLikeEmbed!]!
   }
 
   type Query {

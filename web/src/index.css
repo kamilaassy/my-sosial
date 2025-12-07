@@ -1,0 +1,92 @@
+@font-face {
+  font-family: 'SF Pro';
+  src: local('SF Pro Text'), local('SF Pro Display'),
+       local('.SFNSText'), local('.SFNSDisplay'),
+       local('-apple-system'), local('BlinkMacSystemFont');
+  font-weight: 100 900;
+}
+
+/* Mobile layout */
+@media (max-width: 768px) {
+  .mantine-Container-root {
+    margin-left: 0 !important;
+  }
+
+  .efvn-navbar {
+    display: none !important;
+  }
+}
+
+/* ===============================================
+   GLOBAL BACKGROUND GRADIENT (Purplelux)
+================================================ */
+body {
+  transition: background 0.3s ease;
+}
+
+/* Light mode */
+[data-mantine-color-scheme="light"] body {
+  background: linear-gradient(
+    135deg,
+    var(--mantine-color-purplelux-2),
+    var(--mantine-color-purplelux-3),
+    var(--mantine-color-purplelux-4)
+  );
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+/* Dark mode */
+[data-mantine-color-scheme="dark"] body {
+  background: linear-gradient(
+    135deg,
+    var(--mantine-color-purplelux-8),
+    var(--mantine-color-purplelux-9),
+    var(--mantine-color-purplelux-9)
+  );
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+/* Placeholder color overrides */
+[data-mantine-color-scheme="dark"] .textarea-input::placeholder {
+  color: var(--mantine-color-purplelux-1);
+}
+
+[data-mantine-color-scheme="light"] .textarea-input::placeholder {
+  color: var(--mantine-color-purplelux-6);
+}
+
+/* =====================================
+   Custom Tooltip EFVN
+===================================== */
+.efvn-tooltip {
+  background-color: var(--mantine-color-purplelux-4) !important;
+  color: var(--mantine-color-purplelux-9) !important;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 13px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.35);
+  z-index: 20000  !important;
+
+}
+
+/* Arrow */
+.efvn-tooltip-arrow {
+  --tooltip-bg: var(--mantine-color-purplelux-4);
+  z-index: 20000  !important;
+
+}
+
+/* DARK MODE */
+[data-mantine-color-scheme="dark"] .efvn-tooltip {
+  background-color: rgba(255,255,255,0.08) !important;
+  color: var(--mantine-color-purplelux-1) !important;
+  border: 1px solid rgba(255,255,255,0.22);
+}
+[data-mantine-color-scheme="dark"] .efvn-tooltip-arrow {
+  --tooltip-bg: rgba(255,255,255,0.08);
+}

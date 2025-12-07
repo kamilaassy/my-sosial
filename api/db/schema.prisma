@@ -1,77 +1,177 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-model comment {
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  ACTION_TAKEN
+  DISMISSED
+}
+
+model Report {
+  id         Int          @id @default(autoincrement())
+  reporterId Int
+  reportedId Int
+  postId     Int?
+  reason     String
+  details    String?
+  status     ReportStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+
+  reporter User  @relation("ReportsMade", fields: [reporterId], references: [id])
+  reported User  @relation("ReportsReceived", fields: [reportedId], references: [id])
+  post     Post? @relation(fields: [postId], references: [id])
+}
+
+model User {
+  id                  Int       @id @default(autoincrement())
+  email               String    @unique
+  hashedPassword      String
+  name                String?
+  bio                 String?
+  avatarUrl           String?
+  createdAt           DateTime  @default(now())
+  role                String    @default("user")
+  salt                String
+  resetToken          String?
+  resetTokenExpiresAt DateTime?
+  isBanned            Boolean   @default(false)
+
+  comments     Comment[]
+  posts        Post[]
+  postLikes    PostLike[]
+  commentLikes CommentLike[]
+
+  followsGiven    Follow[] @relation("Follow_followerIdTouser")
+  followsReceived Follow[] @relation("Follow_followingIdTouser")
+
+  sentNotifications     Notification[] @relation("SentNotifications")
+  receivedNotifications Notification[] @relation("ReceivedNotifications")
+
+  // Reports
+  reportsMade     Report[] @relation("ReportsMade")
+  reportsReceived Report[] @relation("ReportsReceived")
+
+  // block user
+  blocksGiven    Block[] @relation("UserBlocksGiven")
+  blocksReceived Block[] @relation("UserBlocksReceived")
+}
+
+model Post {
   id        Int      @id @default(autoincrement())
-  content   String
-  postId    Int
+  content   String?  @db.Text //Batas ± 65.535 karakter.
+  imageUrl  String?
   authorId  Int
   createdAt DateTime @default(now())
-  user      user     @relation(fields: [authorId], references: [id], map: "Comment_authorId_fkey")
-  post      post     @relation(fields: [postId], references: [id], map: "Comment_postId_fkey")
 
-  @@index([authorId], map: "Comment_authorId_fkey")
-  @@index([postId], map: "Comment_postId_fkey")
+  comments  Comment[]
+  postLikes PostLike[]
+
+  user User @relation(fields: [authorId], references: [id])
+
+  // Notifications about this post (like, comment)
+  notifications Notification[] @relation("PostNotifications")
+  reports       Report[]
+
+  @@index([authorId])
 }
 
-model follow {
-  id                            Int      @id @default(autoincrement())
-  followerId                    Int
-  followingId                   Int
-  createdAt                     DateTime @default(now())
-  user_follow_followerIdTouser  user     @relation("follow_followerIdTouser", fields: [followerId], references: [id], map: "Follow_followerId_fkey")
-  user_follow_followingIdTouser user     @relation("follow_followingIdTouser", fields: [followingId], references: [id], map: "Follow_followingId_fkey")
+model Comment {
+  id        Int      @id @default(autoincrement())
+  content   String?  @db.Text
+  postId    Int
+  authorId  Int
+  parentId  Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([followerId, followingId], map: "Follow_followerId_followingId_key")
-  @@index([followingId], map: "Follow_followingId_fkey")
+  post   Post @relation(fields: [postId], references: [id])
+  author User @relation(fields: [authorId], references: [id])
+
+  // Self relation untuk replies
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies Comment[] @relation("CommentReplies")
+
+  // Likes
+  commentLikes CommentLike[]
 }
 
-model like {
+model PostLike {
   id        Int      @id @default(autoincrement())
   userId    Int
   postId    Int
   createdAt DateTime @default(now())
-  post      post     @relation(fields: [postId], references: [id], map: "Like_postId_fkey")
-  user      user     @relation(fields: [userId], references: [id], map: "Like_userId_fkey")
+  updatedAt DateTime @updatedAt
+  post      Post     @relation(fields: [postId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
-  @@unique([userId, postId], map: "Like_userId_postId_key")
-  @@index([postId], map: "Like_postId_fkey")
+  @@unique([userId, postId])
+  @@index([postId])
 }
 
-model post {
-  id        Int       @id @default(autoincrement())
-  content   String?
-  imageUrl  String?
-  authorId  Int
-  createdAt DateTime  @default(now())
-  comment   comment[]
-  like      like[]
-  user      user      @relation(fields: [authorId], references: [id], map: "Post_authorId_fkey")
+model CommentLike {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  commentId Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  comment   Comment  @relation(fields: [commentId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
-  @@index([authorId], map: "Post_authorId_fkey")
+  @@unique([userId, commentId])
+  @@index([commentId])
 }
 
-model user {
-  id                              Int       @id @default(autoincrement())
-  email                           String    @unique(map: "User_email_key")
-  hashedPassword                  String
-  name                            String?
-  bio                             String?
-  avatarUrl                       String?
-  createdAt                       DateTime  @default(now())
-  role                            String    @default("user")
-  salt                            String
-  resetToken                      String?
-  resetTokenExpiresAt             DateTime?
-  comment                         comment[]
-  follow_follow_followerIdTouser  follow[]  @relation("follow_followerIdTouser")
-  follow_follow_followingIdTouser follow[]  @relation("follow_followingIdTouser")
-  like                            like[]
-  post                            post[]
+model Follow {
+  id          Int      @id @default(autoincrement())
+  followerId  Int
+  followingId Int
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("Follow_followerIdTouser", fields: [followerId], references: [id])
+  following User @relation("Follow_followingIdTouser", fields: [followingId], references: [id])
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
+}
+
+model Notification {
+  id          Int      @id @default(autoincrement())
+  type        String // LIKE | COMMENT | FOLLOW
+  message     String?
+  commentText String? // isi komentar (untuk COMMENT)
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  // User yang MEMBUAT notif
+  fromUser   User @relation("SentNotifications", fields: [fromUserId], references: [id])
+  fromUserId Int
+
+  // User yang MENERIMA notif
+  toUser   User @relation("ReceivedNotifications", fields: [toUserId], references: [id])
+  toUserId Int
+
+  // Post yang terkait notif (opsional)
+  post   Post? @relation("PostNotifications", fields: [postId], references: [id])
+  postId Int?
+
+  @@index([toUserId])
+  @@index([isRead])
+}
+
+model Block {
+  id        Int @id @default(autoincrement())
+  blockerId Int
+  blockedId Int
+
+  blocker User @relation("UserBlocksGiven", fields: [blockerId], references: [id])
+  blocked User @relation("UserBlocksReceived", fields: [blockedId], references: [id])
+
+  @@unique([blockerId, blockedId])
 }

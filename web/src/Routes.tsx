@@ -1,47 +1,62 @@
-import { Set, Router, Route } from '@redwoodjs/router'
+import { Router, Route, Set, PrivateSet } from '@redwoodjs/router'
 
-import ScaffoldLayout from 'src/layouts/ScaffoldLayout'
+import AdminLayout from 'src/layouts/AdminLayout/AdminLayout'
+import { AuthLayout } from 'src/layouts/AuthLayout/AuthLayout'
+import MainLayout from 'src/layouts/MainLayout/MainLayout'
+import AdminDashboardPage from 'src/pages/AdminDashboardPage/AdminDashboardPage'
+import AdminReportsPage from 'src/pages/AdminReportsPage/AdminReportsPage'
+import ForgotPasswordPage from 'src/pages/ForgotPasswordPage'
+import HomePage from 'src/pages/HomePage'
+import LoginPage from 'src/pages/LoginPage'
+import NotFoundPage from 'src/pages/NotFoundPage'
+import NotificationsPage from 'src/pages/NotificationsPage'
+import PostPage from 'src/pages/PostPage'
+import ProfilePage from 'src/pages/ProfilePage'
+import ResetPasswordPage from 'src/pages/ResetPasswordPage'
+import SignupPage from 'src/pages/SignupPage'
 
 import { useAuth } from './auth'
+import AdminUsersPage from './pages/AdminUsersPage/AdminUsersPage'
+import SearchPage from './pages/SearchPage/SearchPage'
 
 const Routes = () => {
+  const { loading } = useAuth()
+
+  if (loading) return null
+
   return (
     <Router useAuth={useAuth}>
-      <Route path="/login" page={LoginPage} name="login" />
-      <Route path="/signup" page={SignupPage} name="signup" />
-      <Route path="/forgot-password" page={ForgotPasswordPage} name="forgotPassword" />
-      <Route path="/reset-password" page={ResetPasswordPage} name="resetPassword" />
-      <Route path="/" page={HomePage} name="home" />
-      <Set wrap={ScaffoldLayout} title="Follows" titleTo="follows" buttonLabel="New Follow" buttonTo="newFollow">
-        <Route path="/follows/new" page={FollowNewFollowPage} name="newFollow" />
-        <Route path="/follows/{id:Int}/edit" page={FollowEditFollowPage} name="editFollow" />
-        <Route path="/follows/{id:Int}" page={FollowFollowPage} name="follow" />
-        <Route path="/follows" page={FollowFollowsPage} name="follows" />
+      <PrivateSet unauthenticated="home">
+        <Set wrap={AdminLayout}>
+          <Route path="/admin" page={AdminDashboardPage} name="adminDashboard" />
+          <Route path="/admin/dashboard" page={AdminDashboardPage} name="adminDashboardAlt" />
+          <Route path="/admin/reports" page={AdminReportsPage} name="adminReports" />
+          <Route path="/admin/users" page={AdminUsersPage} name="adminUsers" />
+        </Set>
+      </PrivateSet>
+      {/* ===========================
+                AUTH ROUTES
+          =========================== */}
+      <Set wrap={AuthLayout}>
+        <Route path="/login" page={LoginPage} name="login" />
+        <Route path="/signup" page={SignupPage} name="signup" />
+        <Route path="/forgot-password" page={ForgotPasswordPage} name="forgotPassword" />
+        <Route path="/reset-password" page={ResetPasswordPage} name="resetPassword" />
       </Set>
-      <Set wrap={ScaffoldLayout} title="Likes" titleTo="likes" buttonLabel="New Like" buttonTo="newLike">
-        <Route path="/likes/new" page={LikeNewLikePage} name="newLike" />
-        <Route path="/likes/{id:Int}/edit" page={LikeEditLikePage} name="editLike" />
-        <Route path="/likes/{id:Int}" page={LikeLikePage} name="like" />
-        <Route path="/likes" page={LikeLikesPage} name="likes" />
+      {/* ===========================
+                MAIN APP ROUTES
+          =========================== */}
+      <Set wrap={MainLayout}>
+        <Route path="/" page={HomePage} name="home" />
+        <Route path="/post/{id:Int}" page={PostPage} name="post" />
+        <Route path="/profile/{id:Int}" page={ProfilePage} name="profile" />
+        <Route path="/notifications" page={NotificationsPage} name="notifications" />
+        <Route path="/search" page={SearchPage} name="search" />
       </Set>
-      <Set wrap={ScaffoldLayout} title="Comments" titleTo="comments" buttonLabel="New Comment" buttonTo="newComment">
-        <Route path="/comments/new" page={CommentNewCommentPage} name="newComment" />
-        <Route path="/comments/{id:Int}/edit" page={CommentEditCommentPage} name="editComment" />
-        <Route path="/comments/{id:Int}" page={CommentCommentPage} name="comment" />
-        <Route path="/comments" page={CommentCommentsPage} name="comments" />
-      </Set>
-      <Set wrap={ScaffoldLayout} title="Users" titleTo="users" buttonLabel="New User" buttonTo="newUser">
-        <Route path="/users/new" page={UserNewUserPage} name="newUser" />
-        <Route path="/users/{id:Int}/edit" page={UserEditUserPage} name="editUser" />
-        <Route path="/users/{id:Int}" page={UserUserPage} name="user" />
-        <Route path="/users" page={UserUsersPage} name="users" />
-      </Set>
-      <Set wrap={ScaffoldLayout} title="Posts" titleTo="posts" buttonLabel="New Post" buttonTo="newPost">
-        <Route path="/posts/new" page={PostNewPostPage} name="newPost" />
-        <Route path="/posts/{id:Int}/edit" page={PostEditPostPage} name="editPost" />
-        <Route path="/posts/{id:Int}" page={PostPostPage} name="post" />
-        <Route path="/posts" page={PostPostsPage} name="posts" />
-      </Set>
+
+      {/* ===========================
+                 NOT FOUND
+          =========================== */}
       <Route notfound page={NotFoundPage} />
     </Router>
   )

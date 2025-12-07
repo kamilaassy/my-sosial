@@ -7,30 +7,46 @@ export const standard = defineScenario<Prisma.CommentCreateArgs>({
     one: {
       data: {
         content: 'String',
-        post: {
+        user: {
           create: {
-            author: {
-              create: { email: 'String4104035', hashedPassword: 'String' },
-            },
+            email: 'String4385112',
+            hashedPassword: 'String',
+            salt: 'String',
           },
         },
-        author: {
-          create: { email: 'String4232608', hashedPassword: 'String' },
+        post: {
+          create: {
+            user: {
+              create: {
+                email: 'String1392083',
+                hashedPassword: 'String',
+                salt: 'String',
+              },
+            },
+          },
         },
       },
     },
     two: {
       data: {
         content: 'String',
-        post: {
+        user: {
           create: {
-            author: {
-              create: { email: 'String6329564', hashedPassword: 'String' },
-            },
+            email: 'String5526999',
+            hashedPassword: 'String',
+            salt: 'String',
           },
         },
-        author: {
-          create: { email: 'String3117209', hashedPassword: 'String' },
+        post: {
+          create: {
+            user: {
+              create: {
+                email: 'String7841535',
+                hashedPassword: 'String',
+                salt: 'String',
+              },
+            },
+          },
         },
       },
     },

@@ -1,120 +1,174 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState, FormEvent } from 'react'
 
 import {
-  Form,
-  Label,
-  PasswordField,
-  Submit,
-  FieldError,
-} from '@redwoodjs/forms'
-import { navigate, routes } from '@redwoodjs/router'
-import { Metadata } from '@redwoodjs/web'
-import { toast, Toaster } from '@redwoodjs/web/toast'
+  Paper,
+  Text,
+  Title,
+  PasswordInput,
+  Button,
+  Stack,
+  Loader,
+  Center,
+} from '@mantine/core'
+import { notifications } from '@mantine/notifications'
 
-import { useAuth } from 'src/auth'
+import { useLocation, navigate, routes } from '@redwoodjs/router'
+import { useQuery, useMutation } from '@redwoodjs/web'
 
-const ResetPasswordPage = ({ resetToken }: { resetToken: string }) => {
-  const { isAuthenticated, reauthenticate, validateResetToken, resetPassword } =
-    useAuth()
-  const [enabled, setEnabled] = useState(true)
+import { RESET_PASSWORD_MUTATION } from 'src/graphql/ResetPasswordMutation'
+import { VALIDATE_RESET_TOKEN_QUERY } from 'src/graphql/ValidateResetTokenQuery'
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate(routes.home())
+const ResetPasswordPage = () => {
+  const searchParams = new URLSearchParams(useLocation().search)
+  const token = searchParams.get('token') || ''
+
+  const [newPassword, setNewPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  const { data, loading: validating } = useQuery(VALIDATE_RESET_TOKEN_QUERY, {
+    variables: { token },
+    skip: !token,
+  })
+
+  const [resetPassword, { loading: resetting }] = useMutation(
+    RESET_PASSWORD_MUTATION,
+    {
+      onCompleted: () => {
+        notifications.show({
+          title: 'Success',
+          message: 'Password successfully changed! Redirecting to login...',
+          color: 'green',
+        })
+
+        setTimeout(() => navigate(routes.login()), 1500)
+      },
+
+      onError: (err) =>
+        notifications.show({
+          title: 'Error',
+          message: err.message,
+          color: 'red',
+        }),
     }
-  }, [isAuthenticated])
+  )
 
-  useEffect(() => {
-    const validateToken = async () => {
-      const response = await validateResetToken(resetToken)
-      if (response.error) {
-        setEnabled(false)
-        toast.error(response.error)
-      } else {
-        setEnabled(true)
-      }
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    setError(null)
+
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters.')
+      return
     }
-    validateToken()
-  }, [resetToken, validateResetToken])
 
-  const passwordRef = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    passwordRef.current?.focus()
-  }, [])
+    if (newPassword !== confirm) {
+      setError('Password confirmation does not match.')
+      return
+    }
 
-  const onSubmit = async (data: Record<string, string>) => {
-    const response = await resetPassword({
-      resetToken,
-      password: data.password,
+    resetPassword({
+      variables: { token, newPassword },
     })
+  }
 
-    if (response.error) {
-      toast.error(response.error)
-    } else {
-      toast.success('Password changed!')
-      await reauthenticate()
-      navigate(routes.login())
-    }
+  if (!token) {
+    return (
+      <Center h={200}>
+        <Text>Token not found in URL.</Text>
+      </Center>
+    )
+  }
+
+  if (validating) {
+    return (
+      <Center h={200}>
+        <Loader />
+        <Text ml={10}>Validating token...</Text>
+      </Center>
+    )
+  }
+
+  if (data && !data.validateResetToken) {
+    return (
+      <Center h={200}>
+        <Stack align="center">
+          <Text color="red">Token is invalid or has expired.</Text>
+          <Button
+            variant="dark"
+            color="indigo"
+            onClick={() => navigate(routes.forgotPassword())}
+          >
+            Create New Token
+          </Button>
+        </Stack>
+      </Center>
+    )
   }
 
   return (
-    <>
-      <Metadata title="Reset Password" />
-
-      <main className="rw-main">
-        <Toaster toastOptions={{ className: 'rw-toast', duration: 6000 }} />
-        <div className="rw-scaffold rw-login-container">
-          <div className="rw-segment">
-            <header className="rw-segment-header">
-              <h2 className="rw-heading rw-heading-secondary">
-                Reset Password
-              </h2>
-            </header>
-
-            <div className="rw-segment-main">
-              <div className="rw-form-wrapper">
-                <Form onSubmit={onSubmit} className="rw-form-wrapper">
-                  <div className="text-left">
-                    <Label
-                      name="password"
-                      className="rw-label"
-                      errorClassName="rw-label rw-label-error"
-                    >
-                      New Password
-                    </Label>
-                    <PasswordField
-                      name="password"
-                      autoComplete="new-password"
-                      className="rw-input"
-                      errorClassName="rw-input rw-input-error"
-                      disabled={!enabled}
-                      ref={passwordRef}
-                      validation={{
-                        required: {
-                          value: true,
-                          message: 'New Password is required',
-                        },
-                      }}
-                    />
-
-                    <FieldError name="password" className="rw-field-error" />
-                  </div>
-
-                  <div className="rw-button-group">
-                    <Submit
-                      className="rw-button rw-button-blue"
-                      disabled={!enabled}
-                    >
-                      Submit
-                    </Submit>
-                  </div>
-                </Form>
-              </div>
-            </div>
+    <Center
+      style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #eef2ff 0%, #fdf2f8 100%)',
+      }}
+    >
+      <Paper
+        withBorder
+        shadow="md"
+        radius="md"
+        p="xl"
+        mt={60}
+        style={{ width: 380 }}
+      >
+        <Stack gap="lg">
+          <div>
+            <Title order={3} style={{ textAlign: 'center' }}>
+              Reset Password
+            </Title>
+            <Text ta="center" size="sm" color="dimmed">
+              Enter a new secure password
+            </Text>
           </div>
-        </div>
-      </main>
-    </>
+
+          <form onSubmit={submit}>
+            <Stack gap="md">
+              <PasswordInput
+                label="Password Baru"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.currentTarget.value)}
+                required
+                radius="md"
+              />
+
+              <PasswordInput
+                label="Confirm Password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.currentTarget.value)}
+                required
+                radius="md"
+              />
+
+              {error && (
+                <Text size="sm" color="red">
+                  {error}
+                </Text>
+              )}
+
+              <Button
+                fullWidth
+                type="submit"
+                loading={resetting}
+                radius="md"
+                color="indigo"
+              >
+                {resetting ? 'Processing...' : 'Change Password'}
+              </Button>
+            </Stack>
+          </form>
+        </Stack>
+      </Paper>
+    </Center>
   )
 }
 

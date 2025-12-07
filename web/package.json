@@ -11,10 +11,10 @@
     ]
   },
   "dependencies": {
-    "@mantine/core": "^8.3.5",
+    "@mantine/core": "8.3.6",
     "@mantine/dates": "^8.3.5",
     "@mantine/form": "^8.3.5",
-    "@mantine/hooks": "^8.3.5",
+    "@mantine/hooks": "8.3.6",
     "@mantine/notifications": "^8.3.5",
     "@redwoodjs/auth-dbauth-web": "8.9.0",
     "@redwoodjs/forms": "8.9.0",

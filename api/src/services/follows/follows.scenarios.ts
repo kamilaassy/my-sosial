@@ -7,20 +7,36 @@ export const standard = defineScenario<Prisma.FollowCreateArgs>({
     one: {
       data: {
         follower: {
-          create: { email: 'String9176495', hashedPassword: 'String' },
+          create: {
+            email: 'String288202',
+            hashedPassword: 'String',
+            salt: 'String',
+          },
         },
         following: {
-          create: { email: 'String5343955', hashedPassword: 'String' },
+          create: {
+            email: 'String3229297',
+            hashedPassword: 'String',
+            salt: 'String',
+          },
         },
       },
     },
     two: {
       data: {
         follower: {
-          create: { email: 'String3413270', hashedPassword: 'String' },
+          create: {
+            email: 'String4398373',
+            hashedPassword: 'String',
+            salt: 'String',
+          },
         },
         following: {
-          create: { email: 'String5129688', hashedPassword: 'String' },
+          create: {
+            email: 'String4509615',
+            hashedPassword: 'String',
+            salt: 'String',
+          },
         },
       },
     },

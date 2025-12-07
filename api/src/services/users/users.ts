@@ -5,17 +5,79 @@ import type {
 } from 'types/graphql'
 
 import { db } from 'src/lib/db'
-
-export const users: QueryResolvers['users'] = () => {
-  return db.user.findMany()
+const baseAuthorSelect = {
+  id: true,
+  name: true,
+  email: true,
+  avatarUrl: true,
 }
 
+const replySelect = {
+  id: true,
+  content: true,
+  postId: true,
+  authorId: true,
+  parentId: true,
+  createdAt: true,
+  updatedAt: true,
+
+  author: { select: baseAuthorSelect },
+
+  commentLikes: {
+    select: {
+      id: true,
+      userId: true,
+    },
+  },
+}
+
+const commentSelect = {
+  ...replySelect,
+
+  replies: {
+    orderBy: { createdAt: 'asc' },
+    select: replySelect,
+  },
+} as const
+
+/* ============================================================
+   SELECT untuk post
+============================================================ */
+const postSelect = {
+  id: true,
+  content: true,
+  imageUrl: true,
+  createdAt: true,
+
+  user: { select: baseAuthorSelect },
+
+  postLikes: {
+    select: {
+      id: true,
+      userId: true,
+    },
+  },
+
+  comments: {
+    where: { parentId: null },
+    orderBy: { createdAt: 'asc' },
+    select: commentSelect,
+  },
+} as const
+
+/* ============================================================
+   GET USER BY ID — jika admin, kembalikan null
+============================================================ */
 export const user: QueryResolvers['user'] = ({ id }) => {
   return db.user.findUnique({
     where: { id },
   })
 }
 
+/* ============================================================
+   MUTATIONS — (opsional) admin-only handle
+   Tidak diubah karena tergantung logika aplikasi
+============================================================ */
 export const createUser: MutationResolvers['createUser'] = ({ input }) => {
   return db.user.create({
     data: input,
@@ -35,20 +97,35 @@ export const deleteUser: MutationResolvers['deleteUser'] = ({ id }) => {
   })
 }
 
+/* ============================================================
+   RELATIONAL FIELDS
+============================================================ */
 export const User: UserRelationResolvers = {
-  posts: (_obj, { root }) => {
-    return db.user.findUnique({ where: { id: root?.id } }).posts()
-  },
   comments: (_obj, { root }) => {
-    return db.user.findUnique({ where: { id: root?.id } }).comments()
+    return db.comment.findMany({
+      where: { authorId: root.id, parentId: null },
+      orderBy: { createdAt: 'asc' },
+      select: commentSelect,
+    })
   },
-  likes: (_obj, { root }) => {
-    return db.user.findUnique({ where: { id: root?.id } }).likes()
+
+  posts: (_obj, { root }) => {
+    return db.post.findMany({
+      where: { authorId: root.id },
+      orderBy: { createdAt: 'desc' },
+      select: postSelect,
+    })
   },
-  followers: (_obj, { root }) => {
-    return db.user.findUnique({ where: { id: root?.id } }).followers()
+  followsGiven: (_obj, { root }) => {
+    return db.user.findUnique({ where: { id: root?.id } }).followsGiven()
   },
-  following: (_obj, { root }) => {
-    return db.user.findUnique({ where: { id: root?.id } }).following()
+  followsReceived: (_obj, { root }) => {
+    return db.user.findUnique({ where: { id: root?.id } }).followsReceived()
+  },
+  postLikes: (_obj, { root }) => {
+    return db.user.findUnique({ where: { id: root?.id } }).postLikes()
+  },
+  commentLikes: (_obj, { root }) => {
+    return db.user.findUnique({ where: { id: root?.id } }).commentLikes()
   },
 }

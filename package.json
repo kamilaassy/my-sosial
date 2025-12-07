@@ -26,7 +26,12 @@
     "@storybook/react-dom-shim@npm:7.6.20": "https://verdaccio.tobbe.dev/@storybook/react-dom-shim/-/react-dom-shim-8.0.8.tgz"
   },
   "dependencies": {
+    "@mantine/core": "8.3.6",
+    "@mantine/hooks": "8.3.6",
+    "@mantine/modals": "8.3.6",
     "@mantinex/mantine-logo": "^2.0.0",
-    "@tabler/icons-react": "^3.35.0"
+    "@tabler/icons-react": "^3.35.0",
+    "graphql-upload": "^17.0.0",
+    "recharts": "^3.5.1"
   }
 }

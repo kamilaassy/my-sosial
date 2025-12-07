@@ -7,17 +7,24 @@ export const schema = gql`
     bio: String
     avatarUrl: String
     createdAt: DateTime!
-    posts: [Post]!
-    comments: [Comment]!
-    likes: [Like]!
-    followers: [Follow]!
-    following: [Follow]!
     role: String!
+    salt: String!
+    resetToken: String # optional
+    resetTokenExpiresAt: DateTime
+
+    comments: [Comment]!
+    posts: [Post]!
+    followsGiven: [Follow]!
+    followsReceived: [Follow]!
+    postLikes: [PostLike]!
+    commentLikes: [CommentLike]!
+
+    isBanned: Boolean!
   }
 
   type Query {
-    users: [User!]! @requireAuth
-    user(id: Int!): User @requireAuth
+    users: [User!]! @requireAuth(roles: ["admin", "user"])
+    user(id: Int!): User @requireAuth(roles: ["admin", "user"])
   }
 
   input CreateUserInput {
@@ -27,6 +34,9 @@ export const schema = gql`
     bio: String
     avatarUrl: String
     role: String!
+    salt: String!
+    resetToken: String
+    resetTokenExpiresAt: DateTime
   }
 
   input UpdateUserInput {
@@ -36,6 +46,9 @@ export const schema = gql`
     bio: String
     avatarUrl: String
     role: String
+    salt: String
+    resetToken: String
+    resetTokenExpiresAt: DateTime
   }
 
   type Mutation {

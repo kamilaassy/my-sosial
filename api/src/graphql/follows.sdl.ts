@@ -1,11 +1,11 @@
 export const schema = gql`
   type Follow {
     id: Int!
-    follower: User!
     followerId: Int!
-    following: User!
     followingId: Int!
     createdAt: DateTime!
+    follower: User!
+    following: User!
   }
 
   type Query {

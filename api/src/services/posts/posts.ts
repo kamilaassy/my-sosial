@@ -1,23 +1,37 @@
-import type {
-  QueryResolvers,
-  MutationResolvers,
-  PostRelationResolvers,
-} from 'types/graphql'
+import type { QueryResolvers, MutationResolvers } from 'types/graphql'
 
-import { requireAuth } from 'src/lib/auth'
+import { assertNotAdmin } from 'src/lib/authorization'
+import { requireCurrentUser } from 'src/lib/currentUser'
 import { db } from 'src/lib/db'
 
-export const posts: QueryResolvers['posts'] = async ({
-  skip = 0,
-  take = 10,
-}: {
-  skip?: number
-  take?: number
-}) => {
-  const result = await db.post.findMany({
-    orderBy: { createdAt: 'desc' },
-    skip,
-    take,
+// -------------------------------------------------------------
+// SELECTOR FIX — hanya ambil top-level comments (parentId=null)
+// -------------------------------------------------------------
+const postSelect = {
+  id: true,
+  content: true,
+  imageUrl: true,
+  createdAt: true,
+
+  user: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      avatarUrl: true,
+    },
+  },
+
+  postLikes: {
+    select: {
+      id: true,
+      userId: true,
+    },
+  },
+
+  comments: {
+    where: { parentId: null },
+    orderBy: { createdAt: 'asc' },
     include: {
       author: {
         select: {
@@ -27,114 +41,92 @@ export const posts: QueryResolvers['posts'] = async ({
           avatarUrl: true,
         },
       },
-      comments: {
-        select: {
-          id: true,
-          content: true,
-          authorId: true,
-          createdAt: true,
-        },
-      },
-      likes: {
+      commentLikes: {
         select: {
           id: true,
           userId: true,
         },
       },
-    },
-  })
 
-  // Return as Prisma raw type agar tidak bentrok dengan GraphQL typing
-  return result as unknown as ReturnType<QueryResolvers['posts']>
-}
-
-export const post: QueryResolvers['post'] = async ({ id }) => {
-  const result = await db.post.findUnique({
-    where: { id },
-    include: {
-      author: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatarUrl: true,
+      replies: {
+        orderBy: { createdAt: 'asc' },
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatarUrl: true,
+            },
+          },
+          commentLikes: {
+            select: {
+              id: true,
+              userId: true,
+            },
+          },
         },
       },
-      comments: true,
-      likes: true,
     },
-  })
+  },
+} as const
 
-  return result as unknown as ReturnType<QueryResolvers['post']>
+// -------------------------------------------------------------
+// GET POST LIST
+// -------------------------------------------------------------
+export const posts: QueryResolvers['posts'] = ({ skip = 0, take = 10 }) => {
+  return db.post.findMany({
+    skip,
+    take,
+    orderBy: { createdAt: 'desc' },
+    select: postSelect,
+  })
 }
 
-export const createPost: MutationResolvers['createPost'] = async ({
-  input,
-}) => {
-  requireAuth()
-  const userId = context.currentUser?.id
+// -------------------------------------------------------------
+// GET SINGLE POST
+// -------------------------------------------------------------
+export const post: QueryResolvers['post'] = ({ id }) => {
+  return db.post.findUnique({
+    where: { id },
+    select: postSelect,
+  })
+}
 
-  if (!userId) throw new Error('You must be logged in to create a post')
+// -------------------------------------------------------------
+// CREATE POST — Admin DIBLOK
+// -------------------------------------------------------------
+export const createPost: MutationResolvers['createPost'] = (
+  { input },
+  { context }
+) => {
+  const user = requireCurrentUser(context)
+  assertNotAdmin(user)
 
-  const result = await db.post.create({
+  return db.post.create({
     data: {
-      ...input,
-      authorId: userId,
+      content: input.content,
+      imageUrl: input.imageUrl,
+      authorId: user.id,
     },
-    include: {
-      author: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatarUrl: true,
-        },
-      },
-    },
+    select: postSelect,
   })
-
-  return result as unknown as ReturnType<MutationResolvers['createPost']>
 }
 
-export const updatePost: MutationResolvers['updatePost'] = async ({
-  id,
-  input,
-}) => {
-  requireAuth()
-
-  const post = await db.post.findUnique({ where: { id } })
-  if (!post) throw new Error('Post not found')
-  if (post.authorId !== context.currentUser?.id)
-    throw new Error('Not authorized to edit this post')
-
-  const result = await db.post.update({
-    data: input,
+export const updatePost: MutationResolvers['updatePost'] = ({ id, input }) => {
+  return db.post.update({
     where: { id },
+    data: input,
+    select: postSelect,
   })
-
-  return result as unknown as ReturnType<MutationResolvers['updatePost']>
 }
 
 export const deletePost: MutationResolvers['deletePost'] = async ({ id }) => {
-  requireAuth()
+  await db.postLike.deleteMany({ where: { postId: id } })
+  await db.comment.deleteMany({ where: { postId: id } })
 
-  const post = await db.post.findUnique({ where: { id } })
-  if (!post) throw new Error('Post not found')
-  if (post.authorId !== context.currentUser?.id)
-    throw new Error('Not authorized to delete this post')
-
-  const result = await db.post.delete({
+  return db.post.delete({
     where: { id },
+    select: postSelect,
   })
-
-  return result as unknown as ReturnType<MutationResolvers['deletePost']>
-}
-
-export const Post: PostRelationResolvers = {
-  author: (_obj, { root }) =>
-    db.post.findUnique({ where: { id: root?.id } }).author(),
-  comments: (_obj, { root }) =>
-    db.post.findUnique({ where: { id: root?.id } }).comments(),
-  likes: (_obj, { root }) =>
-    db.post.findUnique({ where: { id: root?.id } }).likes(),
 }

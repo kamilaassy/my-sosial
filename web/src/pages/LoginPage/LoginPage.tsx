@@ -1,6 +1,18 @@
 import { useEffect, useRef } from 'react'
 
 import {
+  Card,
+  Container,
+  Stack,
+  Title,
+  Divider,
+  useMantineTheme,
+  Text,
+  Anchor,
+  Box,
+} from '@mantine/core'
+
+import {
   Form,
   Label,
   TextField,
@@ -8,126 +20,274 @@ import {
   Submit,
   FieldError,
 } from '@redwoodjs/forms'
-import { Link, navigate, routes } from '@redwoodjs/router'
+import { Link, routes, navigate } from '@redwoodjs/router'
 import { Metadata } from '@redwoodjs/web'
 import { toast, Toaster } from '@redwoodjs/web/toast'
 
 import { useAuth } from 'src/auth'
 
-const LoginPage = () => {
-  const { isAuthenticated, logIn } = useAuth()
+export default function LoginPage() {
+  const { isAuthenticated, logIn, currentUser } = useAuth()
+  const theme = useMantineTheme()
 
+  // detect dark mode
+  const isDark =
+    document.documentElement.getAttribute('data-mantine-color-scheme') ===
+    'dark'
+
+  /* ==========================================================
+     AUTO REDIRECT IF ALREADY LOGGED IN
+  ========================================================== */
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate(routes.home())
-    }
-  }, [isAuthenticated])
+    if (!isAuthenticated) return
 
+    if (currentUser?.role === 'admin') navigate(routes.adminDashboard())
+    else navigate(routes.home())
+  }, [currentUser?.role, isAuthenticated])
+
+  /* ==========================================================
+     INPUT AUTOFOCUS
+  ========================================================== */
   const usernameRef = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    usernameRef.current?.focus()
-  }, [])
+  useEffect(() => usernameRef.current?.focus(), [])
 
+  /* ==========================================================
+     SUBMIT LOGIN
+  ========================================================== */
   const onSubmit = async (data: Record<string, string>) => {
     const response = await logIn({
       username: data.username,
       password: data.password,
     })
 
-    if (response.message) {
-      toast(response.message)
-    } else if (response.error) {
+    if (response.error) {
       toast.error(response.error)
+      return
+    }
+
+    toast.success('Welcome back!')
+
+    // ⭐ Redirect berdasarkan role dari response
+    if (response.user?.role === 'admin') {
+      navigate(routes.adminDashboard())
     } else {
-      toast.success('Welcome back!')
+      navigate(routes.home())
     }
   }
 
+  /* ==========================================================
+     THEME TOKENS (PurpleLux)
+  ========================================================== */
+  const cardBg = isDark ? 'rgba(36,26,34,0.58)' : 'rgba(255,255,255,0.72)'
+  const borderColor = isDark
+    ? theme.colors.purplelux[7]
+    : theme.colors.purplelux[2]
+
+  const titleCol = isDark
+    ? theme.colors.purplelux[0]
+    : theme.colors.purplelux[9]
+
+  const inputBg = isDark ? theme.colors.purplelux[8] : theme.colors.purplelux[0]
+  const inputBorder = isDark
+    ? theme.colors.purplelux[6]
+    : theme.colors.purplelux[3]
+
+  const subtleGlow = isDark
+    ? '0 6px 30px rgba(36,26,34,0.35)'
+    : '0 6px 30px rgba(160,92,132,0.08)'
+
+  /* ==========================================================
+     RENDER
+  ========================================================== */
   return (
     <>
       <Metadata title="Login" />
 
-      <main className="rw-main">
+      <main
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '2rem',
+        }}
+      >
         <Toaster toastOptions={{ className: 'rw-toast', duration: 6000 }} />
-        <div className="rw-scaffold rw-login-container">
-          <div className="rw-segment">
-            <header className="rw-segment-header">
-              <h2 className="rw-heading rw-heading-secondary">Login</h2>
-            </header>
 
-            <div className="rw-segment-main">
-              <div className="rw-form-wrapper">
-                <Form onSubmit={onSubmit} className="rw-form-wrapper">
-                  <Label
-                    name="username"
-                    className="rw-label"
-                    errorClassName="rw-label rw-label-error"
-                  >
-                    Username
-                  </Label>
-                  <TextField
-                    name="username"
-                    className="rw-input"
-                    errorClassName="rw-input rw-input-error"
-                    ref={usernameRef}
-                    validation={{
-                      required: {
-                        value: true,
-                        message: 'Username is required',
-                      },
-                    }}
-                  />
+        <Container
+          size="lg"
+          style={{ display: 'flex', justifyContent: 'center' }}
+        >
+          <Card
+            p={28}
+            radius={14}
+            withBorder
+            shadow="md"
+            style={{
+              maxWidth: 520,
+              minWidth: 420,
+              width: '100%',
+              minHeight: 360,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
 
-                  <FieldError name="username" className="rw-field-error" />
+              backdropFilter: 'blur(14px)',
+              backgroundColor: cardBg,
+              borderColor,
+              boxShadow: subtleGlow,
+            }}
+          >
+            <Stack gap={18}>
+              <Title
+                ta="center"
+                fw={700}
+                style={{ fontSize: 28, color: titleCol, marginBottom: 6 }}
+              >
+                Welcome Back
+              </Title>
 
-                  <Label
-                    name="password"
-                    className="rw-label"
-                    errorClassName="rw-label rw-label-error"
-                  >
-                    Password
-                  </Label>
-                  <PasswordField
-                    name="password"
-                    className="rw-input"
-                    errorClassName="rw-input rw-input-error"
-                    autoComplete="current-password"
-                    validation={{
-                      required: {
-                        value: true,
-                        message: 'Password is required',
-                      },
-                    }}
-                  />
-
-                  <div className="rw-forgot-link">
-                    <Link
-                      to={routes.forgotPassword()}
-                      className="rw-forgot-link"
+              <Form onSubmit={onSubmit}>
+                <Stack gap={12}>
+                  {/* USERNAME */}
+                  <div>
+                    <Label
+                      name="username"
+                      style={{
+                        color: titleCol,
+                        fontWeight: 600,
+                        fontSize: 13,
+                      }}
                     >
-                      Forgot Password?
-                    </Link>
+                      Username
+                    </Label>
+
+                    <TextField
+                      name="username"
+                      ref={usernameRef}
+                      className="rw-input"
+                      validation={{
+                        required: {
+                          value: true,
+                          message: 'Username is required',
+                        },
+                      }}
+                      style={{
+                        backgroundColor: inputBg,
+                        border: `1px solid ${inputBorder}`,
+                        padding: '8px 12px',
+                        height: 40,
+                        borderRadius: 8,
+                        color: titleCol,
+                        marginTop: 8,
+                        width: '100%',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+
+                    <FieldError name="username" />
                   </div>
 
-                  <FieldError name="password" className="rw-field-error" />
+                  {/* PASSWORD */}
+                  <div>
+                    <Label
+                      name="password"
+                      style={{
+                        color: titleCol,
+                        fontWeight: 600,
+                        fontSize: 13,
+                      }}
+                    >
+                      Password
+                    </Label>
 
-                  <div className="rw-button-group">
-                    <Submit className="rw-button rw-button-blue">Login</Submit>
+                    <PasswordField
+                      name="password"
+                      className="rw-input"
+                      autoComplete="current-password"
+                      validation={{
+                        required: {
+                          value: true,
+                          message: 'Password is required',
+                        },
+                      }}
+                      style={{
+                        backgroundColor: inputBg,
+                        border: `1px solid ${inputBorder}`,
+                        padding: '8px 12px',
+                        height: 40,
+                        borderRadius: 8,
+                        color: titleCol,
+                        marginTop: 8,
+                        width: '100%',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+
+                    <FieldError name="password" />
+
+                    {/* Forgot Password */}
+                    <Box
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        marginTop: 8,
+                      }}
+                    >
+                      <Anchor
+                        component="a"
+                        href={routes.forgotPassword()}
+                        style={{
+                          fontSize: 13,
+                          color: isDark
+                            ? theme.colors.purplelux[1]
+                            : theme.colors.purplelux[6],
+                          textDecoration: 'underline',
+                        }}
+                      >
+                        Forgot Password?
+                      </Anchor>
+                    </Box>
                   </div>
-                </Form>
-              </div>
-            </div>
-          </div>
-          <div className="rw-login-link">
-            <span>Don&apos;t have an account?</span>{' '}
-            <Link to={routes.signup()} className="rw-link">
-              Sign up!
-            </Link>
-          </div>
-        </div>
+
+                  {/* SUBMIT BUTTON */}
+                  <Submit
+                    style={{
+                      width: '100%',
+                      height: 44,
+                      borderRadius: 8,
+                      marginTop: 6,
+                      fontWeight: 700,
+                      backgroundColor: theme.colors.purplelux[4],
+                      color: 'white',
+                    }}
+                  >
+                    LOGIN
+                  </Submit>
+                </Stack>
+              </Form>
+
+              <Divider opacity={0.12} />
+
+              {/* SIGNUP LINK */}
+              <Text
+                ta="center"
+                size="sm"
+                style={{
+                  color: isDark
+                    ? theme.colors.purplelux[1]
+                    : theme.colors.purplelux[7],
+                }}
+              >
+                Don’t have an account?{' '}
+                <Link to={routes.signup()} style={{ fontWeight: 600 }}>
+                  Sign up
+                </Link>
+              </Text>
+            </Stack>
+          </Card>
+        </Container>
       </main>
     </>
   )
 }
-
-export default LoginPage

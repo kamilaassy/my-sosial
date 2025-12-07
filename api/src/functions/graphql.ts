@@ -8,6 +8,11 @@ import services from 'src/services/**/*.{js,ts}'
 import { cookieName, getCurrentUser } from 'src/lib/auth'
 import { db } from 'src/lib/db'
 import { logger } from 'src/lib/logger'
+import {
+  forgotPassword,
+  resetPassword,
+  validateResetToken,
+} from 'src/services/auth/auth'
 
 const authDecoder = createAuthDecoder(cookieName)
 
@@ -19,7 +24,17 @@ export const handler = createGraphQLHandler({
   sdls,
   services,
   onException: () => {
-    // Disconnect from your database with an unhandled exception.
     db.$disconnect()
   },
 })
+
+export const Mutation = {
+  forgotPassword: (_: unknown, args: { email: string }) => forgotPassword(args),
+  resetPassword: (_: unknown, args: { token: string; newPassword: string }) =>
+    resetPassword(args),
+}
+
+export const Query = {
+  validateResetToken: (_: unknown, args: { token: string }) =>
+    validateResetToken(args),
+}

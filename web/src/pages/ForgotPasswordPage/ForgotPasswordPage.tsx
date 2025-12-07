@@ -1,93 +1,126 @@
-import { useEffect, useRef } from 'react'
+import { useState, FormEvent } from 'react'
 
-import { Form, Label, TextField, Submit, FieldError } from '@redwoodjs/forms'
+import {
+  Paper,
+  Text,
+  Title,
+  TextInput,
+  Button,
+  Stack,
+  Center,
+} from '@mantine/core'
+import { notifications } from '@mantine/notifications'
+
 import { navigate, routes } from '@redwoodjs/router'
-import { Metadata } from '@redwoodjs/web'
-import { toast, Toaster } from '@redwoodjs/web/toast'
+import { useMutation } from '@redwoodjs/web'
 
-import { useAuth } from 'src/auth'
+import { FORGOT_PASSWORD_MUTATION } from 'src/graphql/ForgotPasswordMutation'
 
 const ForgotPasswordPage = () => {
-  const { isAuthenticated, forgotPassword } = useAuth()
+  const [email, setEmail] = useState('')
+  const [sent, setSent] = useState(false)
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate(routes.home())
-    }
-  }, [isAuthenticated])
+  const [forgotPassword, { loading }] = useMutation(FORGOT_PASSWORD_MUTATION, {
+    onCompleted: () => {
+      notifications.show({
+        title: 'Success',
+        message: 'Token created successfully! Check server console.',
+        color: 'green',
+      })
+      setSent(true)
+    },
+    onError: () => {
+      notifications.show({
+        title: 'Info',
+        message:
+          'If the email is registered, a token has been created. Check the server console.',
+        color: 'blue',
+      })
+      setSent(true)
+    },
+  })
 
-  const usernameRef = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    usernameRef?.current?.focus()
-  }, [])
-
-  const onSubmit = async (data: { username: string }) => {
-    const response = await forgotPassword(data.username)
-
-    if (response.error) {
-      toast.error(response.error)
-    } else {
-      // The function `forgotPassword.handler` in api/src/functions/auth.js has
-      // been invoked, let the user know how to get the link to reset their
-      // password (sent in email, perhaps?)
-      toast.success(
-        'A link to reset your password was sent to ' + response.email
-      )
-      navigate(routes.login())
-    }
+  const onSubmit = (e: FormEvent) => {
+    e.preventDefault()
+    if (!email) return
+    forgotPassword({ variables: { email } })
   }
 
   return (
-    <>
-      <Metadata title="Forgot Password" />
+    <Center>
+      <Paper
+        withBorder
+        shadow="md"
+        radius="md"
+        p="xl"
+        mt={60}
+        style={{ width: 380 }}
+      >
+        <Stack gap="lg">
+          <div>
+            <Title order={3} ta="center">
+              Forgot Password
+            </Title>
 
-      <main className="rw-main">
-        <Toaster toastOptions={{ className: 'rw-toast', duration: 6000 }} />
-        <div className="rw-scaffold rw-login-container">
-          <div className="rw-segment">
-            <header className="rw-segment-header">
-              <h2 className="rw-heading rw-heading-secondary">
-                Forgot Password
-              </h2>
-            </header>
-
-            <div className="rw-segment-main">
-              <div className="rw-form-wrapper">
-                <Form onSubmit={onSubmit} className="rw-form-wrapper">
-                  <div className="text-left">
-                    <Label
-                      name="username"
-                      className="rw-label"
-                      errorClassName="rw-label rw-label-error"
-                    >
-                      Username
-                    </Label>
-                    <TextField
-                      name="username"
-                      className="rw-input"
-                      errorClassName="rw-input rw-input-error"
-                      ref={usernameRef}
-                      validation={{
-                        required: {
-                          value: true,
-                          message: 'Username is required',
-                        },
-                      }}
-                    />
-
-                    <FieldError name="username" className="rw-field-error" />
-                  </div>
-
-                  <div className="rw-button-group">
-                    <Submit className="rw-button rw-button-blue">Submit</Submit>
-                  </div>
-                </Form>
-              </div>
-            </div>
+            <Text ta="center" size="sm" color="dimmed">
+              Enter your email / username
+            </Text>
           </div>
-        </div>
-      </main>
-    </>
+
+          {!sent ? (
+            <form onSubmit={onSubmit}>
+              <Stack gap="md">
+                <TextInput
+                  label="Email / Username"
+                  placeholder="e.g., emscans"
+                  value={email}
+                  onChange={(e) => setEmail(e.currentTarget.value)}
+                  radius="md"
+                  required
+                />
+
+                <Button
+                  fullWidth
+                  type="submit"
+                  loading={loading}
+                  radius="md"
+                  color="indigo"
+                >
+                  {loading ? 'Processing...' : 'Create Token'}
+                </Button>
+              </Stack>
+            </form>
+          ) : (
+            <Stack gap="md" align="center">
+              <Text size="sm" ta="center">
+                If the email/username is registered, a token has been created.
+                <br />
+                Please check the server console:
+              </Text>
+
+              <Text
+                size="sm"
+                ta="center"
+                color="indigo"
+                style={{ fontFamily: 'monospace' }}
+              >
+                /reset-password?token=YOUR_TOKEN
+              </Text>
+
+              <Button
+                variant="dark"
+                radius="md"
+                color="indigo"
+                fullWidth
+                onClick={() => navigate(routes.home())}
+              >
+                Back to Home
+              </Button>
+            </Stack>
+          )}
+        </Stack>
+      </Paper>
+    </Center>
   )
 }
 
