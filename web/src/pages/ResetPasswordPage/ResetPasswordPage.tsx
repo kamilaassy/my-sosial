@@ -9,6 +9,8 @@ import {
   Stack,
   Loader,
   Center,
+  useMantineTheme,
+  useComputedColorScheme,
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 
@@ -19,6 +21,9 @@ import { RESET_PASSWORD_MUTATION } from 'src/graphql/ResetPasswordMutation'
 import { VALIDATE_RESET_TOKEN_QUERY } from 'src/graphql/ValidateResetTokenQuery'
 
 const ResetPasswordPage = () => {
+  const theme = useMantineTheme()
+  const isDark = useComputedColorScheme() === 'dark'
+
   const searchParams = new URLSearchParams(useLocation().search)
   const token = searchParams.get('token') || ''
 
@@ -26,24 +31,25 @@ const ResetPasswordPage = () => {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
 
+  /* ================= TOKEN VALIDATION ================= */
   const { data, loading: validating } = useQuery(VALIDATE_RESET_TOKEN_QUERY, {
     variables: { token },
     skip: !token,
   })
 
+  /* ================= MUTATION ================= */
   const [resetPassword, { loading: resetting }] = useMutation(
     RESET_PASSWORD_MUTATION,
     {
       onCompleted: () => {
         notifications.show({
           title: 'Success',
-          message: 'Password successfully changed! Redirecting to login...',
+          message: 'Password successfully changed. Redirecting to login…',
           color: 'green',
         })
 
         setTimeout(() => navigate(routes.login()), 1500)
       },
-
       onError: (err) =>
         notifications.show({
           title: 'Error',
@@ -53,6 +59,7 @@ const ResetPasswordPage = () => {
     }
   )
 
+  /* ================= SUBMIT ================= */
   const submit = (e: FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -72,6 +79,7 @@ const ResetPasswordPage = () => {
     })
   }
 
+  /* ================= STATES ================= */
   if (!token) {
     return (
       <Center h={200}>
@@ -84,21 +92,20 @@ const ResetPasswordPage = () => {
     return (
       <Center h={200}>
         <Loader />
-        <Text ml={10}>Validating token...</Text>
+        <Text ml={10}>Validating token…</Text>
       </Center>
     )
   }
 
   if (data && !data.validateResetToken) {
     return (
-      <Center h={200}>
+      <Center h="100vh">
         <Stack align="center">
-          <Text color="red">Token is invalid or has expired.</Text>
-          <Button
-            variant="dark"
-            color="indigo"
-            onClick={() => navigate(routes.forgotPassword())}
-          >
+          <Text fw={600} c="red">
+            Token is invalid or has expired.
+          </Text>
+
+          <Button radius="md" onClick={() => navigate(routes.forgotPassword())}>
             Create New Token
           </Button>
         </Stack>
@@ -106,27 +113,36 @@ const ResetPasswordPage = () => {
     )
   }
 
+  /* ================= UI ================= */
   return (
-    <Center
-      style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #eef2ff 0%, #fdf2f8 100%)',
-      }}
-    >
+    <Center h="100vh">
       <Paper
-        withBorder
-        shadow="md"
-        radius="md"
+        radius="xl"
         p="xl"
-        mt={60}
-        style={{ width: 380 }}
+        style={{
+          width: 380,
+
+          background: isDark ? 'rgba(20,20,28,0.55)' : 'rgba(255,255,255,0.65)',
+
+          backdropFilter: 'blur(18px)',
+          WebkitBackdropFilter: 'blur(18px)',
+
+          border: isDark
+            ? '1px solid rgba(255,255,255,0.12)'
+            : '1px solid rgba(0,0,0,0.08)',
+        }}
       >
         <Stack gap="lg">
           <div>
-            <Title order={3} style={{ textAlign: 'center' }}>
+            <Title
+              order={3}
+              ta="center"
+              c={isDark ? theme.colors.purplelux[0] : theme.colors.purplelux[9]}
+            >
               Reset Password
             </Title>
-            <Text ta="center" size="sm" color="dimmed">
+
+            <Text ta="center" size="sm" c="dimmed">
               Enter a new secure password
             </Text>
           </div>
@@ -134,35 +150,29 @@ const ResetPasswordPage = () => {
           <form onSubmit={submit}>
             <Stack gap="md">
               <PasswordInput
-                label="Password Baru"
+                label="New Password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.currentTarget.value)}
-                required
                 radius="md"
+                required
               />
 
               <PasswordInput
                 label="Confirm Password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.currentTarget.value)}
-                required
                 radius="md"
+                required
               />
 
               {error && (
-                <Text size="sm" color="red">
+                <Text size="sm" c="red">
                   {error}
                 </Text>
               )}
 
-              <Button
-                fullWidth
-                type="submit"
-                loading={resetting}
-                radius="md"
-                color="indigo"
-              >
-                {resetting ? 'Processing...' : 'Change Password'}
+              <Button type="submit" fullWidth radius="md" loading={resetting}>
+                {resetting ? 'Processing…' : 'Change Password'}
               </Button>
             </Stack>
           </form>

@@ -1,292 +1,188 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import {
-  Card,
-  Container,
   Stack,
   Title,
-  Divider,
-  useMantineTheme,
   Text,
   Anchor,
   Box,
+  ActionIcon,
+  useMantineTheme,
 } from '@mantine/core'
+import { IconEye, IconEyeOff } from '@tabler/icons-react'
 
 import {
   Form,
   Label,
   TextField,
-  PasswordField,
   Submit,
   FieldError,
+  PasswordField,
 } from '@redwoodjs/forms'
 import { Link, routes, navigate } from '@redwoodjs/router'
 import { Metadata } from '@redwoodjs/web'
-import { toast, Toaster } from '@redwoodjs/web/toast'
 
 import { useAuth } from 'src/auth'
+import { AuthCard } from 'src/components/ui/AuthCard'
 
 export default function LoginPage() {
-  const { isAuthenticated, logIn, currentUser } = useAuth()
+  const { logIn } = useAuth()
   const theme = useMantineTheme()
 
-  // detect dark mode
+  const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
+
+  const [showPassword, setShowPassword] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
+
+  useEffect(() => {
+    emailRef.current?.focus()
+  }, [])
+
   const isDark =
     document.documentElement.getAttribute('data-mantine-color-scheme') ===
     'dark'
 
-  /* ==========================================================
-     AUTO REDIRECT IF ALREADY LOGGED IN
-  ========================================================== */
-  useEffect(() => {
-    if (!isAuthenticated) return
-
-    if (currentUser?.role === 'admin') navigate(routes.adminDashboard())
-    else navigate(routes.home())
-  }, [currentUser?.role, isAuthenticated])
-
-  /* ==========================================================
-     INPUT AUTOFOCUS
-  ========================================================== */
-  const usernameRef = useRef<HTMLInputElement>(null)
-  useEffect(() => usernameRef.current?.focus(), [])
-
-  /* ==========================================================
-     SUBMIT LOGIN
-  ========================================================== */
-  const onSubmit = async (data: Record<string, string>) => {
-    const response = await logIn({
-      username: data.username,
-      password: data.password,
-    })
-
-    if (response.error) {
-      toast.error(response.error)
-      return
-    }
-
-    toast.success('Welcome back!')
-
-    // ⭐ Redirect berdasarkan role dari response
-    if (response.user?.role === 'admin') {
-      navigate(routes.adminDashboard())
-    } else {
-      navigate(routes.home())
-    }
-  }
-
-  /* ==========================================================
-     THEME TOKENS (PurpleLux)
-  ========================================================== */
-  const cardBg = isDark ? 'rgba(36,26,34,0.58)' : 'rgba(255,255,255,0.72)'
-  const borderColor = isDark
-    ? theme.colors.purplelux[7]
-    : theme.colors.purplelux[2]
-
-  const titleCol = isDark
+  const textMain = isDark
     ? theme.colors.purplelux[0]
     : theme.colors.purplelux[9]
 
-  const inputBg = isDark ? theme.colors.purplelux[8] : theme.colors.purplelux[0]
-  const inputBorder = isDark
-    ? theme.colors.purplelux[6]
-    : theme.colors.purplelux[3]
+  const textSubtle = isDark
+    ? theme.colors.purplelux[2]
+    : theme.colors.purplelux[6]
 
-  const subtleGlow = isDark
-    ? '0 6px 30px rgba(36,26,34,0.35)'
-    : '0 6px 30px rgba(160,92,132,0.08)'
+  const onSubmit = async (data: Record<string, string>) => {
+    setAuthError(null)
 
-  /* ==========================================================
-     RENDER
-  ========================================================== */
+    const res = await logIn({
+      username: data.email,
+      password: data.password,
+    })
+
+    if (res.error) {
+      setAuthError(
+        'Sorry, your password was incorrect. Please double-check your password.'
+      )
+      return
+    }
+
+    navigate(
+      res.user?.role === 'admin' ? routes.adminDashboard() : routes.home()
+    )
+  }
+
   return (
     <>
       <Metadata title="Login" />
 
-      <main
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '2rem',
-        }}
-      >
-        <Toaster toastOptions={{ className: 'rw-toast', duration: 6000 }} />
+      <main className="auth-center">
+        <AuthCard>
+          <Stack align="center" gap={4}>
+            <Title fw={700} c={textMain}>
+              Welcome back
+            </Title>
+            <Text size="sm" c={textSubtle}>
+              Please enter your details to sign in
+            </Text>
+          </Stack>
 
-        <Container
-          size="lg"
-          style={{ display: 'flex', justifyContent: 'center' }}
-        >
-          <Card
-            p={28}
-            radius={14}
-            withBorder
-            shadow="md"
-            style={{
-              maxWidth: 520,
-              minWidth: 420,
-              width: '100%',
-              minHeight: 360,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
+          <Form onSubmit={onSubmit}>
+            <Stack gap={16}>
+              {/* USERNAME */}
+              <Box>
+                <Label name="email">Username</Label>
+                <TextField
+                  name="email"
+                  ref={emailRef}
+                  validation={{ required: true }}
+                  className="rw-input"
+                  onChange={() => authError && setAuthError(null)}
+                />
+                <FieldError name="email" />
+              </Box>
 
-              backdropFilter: 'blur(14px)',
-              backgroundColor: cardBg,
-              borderColor,
-              boxShadow: subtleGlow,
-            }}
-          >
-            <Stack gap={18}>
-              <Title
-                ta="center"
-                fw={700}
-                style={{ fontSize: 28, color: titleCol, marginBottom: 6 }}
-              >
-                Welcome Back
-              </Title>
+              {/* PASSWORD */}
+              <Box>
+                <Label name="password">Password</Label>
 
-              <Form onSubmit={onSubmit}>
-                <Stack gap={12}>
-                  {/* USERNAME */}
-                  <div>
-                    <Label
-                      name="username"
-                      style={{
-                        color: titleCol,
-                        fontWeight: 600,
-                        fontSize: 13,
-                      }}
-                    >
-                      Username
-                    </Label>
-
-                    <TextField
-                      name="username"
-                      ref={usernameRef}
-                      className="rw-input"
-                      validation={{
-                        required: {
-                          value: true,
-                          message: 'Username is required',
-                        },
-                      }}
-                      style={{
-                        backgroundColor: inputBg,
-                        border: `1px solid ${inputBorder}`,
-                        padding: '8px 12px',
-                        height: 40,
-                        borderRadius: 8,
-                        color: titleCol,
-                        marginTop: 8,
-                        width: '100%',
-                        boxSizing: 'border-box',
-                      }}
-                    />
-
-                    <FieldError name="username" />
-                  </div>
-
-                  {/* PASSWORD */}
-                  <div>
-                    <Label
-                      name="password"
-                      style={{
-                        color: titleCol,
-                        fontWeight: 600,
-                        fontSize: 13,
-                      }}
-                    >
-                      Password
-                    </Label>
-
-                    <PasswordField
-                      name="password"
-                      className="rw-input"
-                      autoComplete="current-password"
-                      validation={{
-                        required: {
-                          value: true,
-                          message: 'Password is required',
-                        },
-                      }}
-                      style={{
-                        backgroundColor: inputBg,
-                        border: `1px solid ${inputBorder}`,
-                        padding: '8px 12px',
-                        height: 40,
-                        borderRadius: 8,
-                        color: titleCol,
-                        marginTop: 8,
-                        width: '100%',
-                        boxSizing: 'border-box',
-                      }}
-                    />
-
-                    <FieldError name="password" />
-
-                    {/* Forgot Password */}
-                    <Box
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        marginTop: 8,
-                      }}
-                    >
-                      <Anchor
-                        component="a"
-                        href={routes.forgotPassword()}
-                        style={{
-                          fontSize: 13,
-                          color: isDark
-                            ? theme.colors.purplelux[1]
-                            : theme.colors.purplelux[6],
-                          textDecoration: 'underline',
-                        }}
-                      >
-                        Forgot Password?
-                      </Anchor>
-                    </Box>
-                  </div>
-
-                  {/* SUBMIT BUTTON */}
-                  <Submit
+                <Box style={{ position: 'relative' }}>
+                  <PasswordField
+                    name="password"
+                    ref={passwordRef}
+                    validation={{ required: true }}
+                    className="rw-input"
                     style={{
                       width: '100%',
-                      height: 44,
-                      borderRadius: 8,
-                      marginTop: 6,
-                      fontWeight: 700,
-                      backgroundColor: theme.colors.purplelux[4],
-                      color: 'white',
+                      padding: '10px 44px 10px 12px',
+                      borderRadius: 10,
+                    }}
+                    onChange={() => authError && setAuthError(null)}
+                  />
+
+                  <ActionIcon
+                    variant="subtle"
+                    onClick={() => {
+                      if (!passwordRef.current) return
+                      passwordRef.current.type =
+                        passwordRef.current.type === 'password'
+                          ? 'text'
+                          : 'password'
+                      setShowPassword((v) => !v)
+                    }}
+                    style={{
+                      position: 'absolute',
+                      right: 8,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
                     }}
                   >
-                    LOGIN
-                  </Submit>
-                </Stack>
-              </Form>
+                    {showPassword ? (
+                      <IconEyeOff size={18} />
+                    ) : (
+                      <IconEye size={18} />
+                    )}
+                  </ActionIcon>
+                </Box>
 
-              <Divider opacity={0.12} />
+                <FieldError name="password" />
+              </Box>
 
-              {/* SIGNUP LINK */}
-              <Text
-                ta="center"
-                size="sm"
+              {/* SUBMIT */}
+              <Submit
                 style={{
-                  color: isDark
-                    ? theme.colors.purplelux[1]
-                    : theme.colors.purplelux[7],
+                  marginTop: 12,
+                  height: 46,
+                  borderRadius: 999,
+                  fontWeight: 700,
+                  background: theme.colors.purplelux[4],
+                  color: 'white',
                 }}
               >
-                Don’t have an account?{' '}
-                <Link to={routes.signup()} style={{ fontWeight: 600 }}>
-                  Sign up
-                </Link>
-              </Text>
+                Sign in
+              </Submit>
+
+              {/* 🔴 AUTH ERROR (INSTAGRAM STYLE) */}
+              {authError && (
+                <Text size="sm" ta="center" c="red" style={{ marginTop: 4 }}>
+                  {authError}
+                </Text>
+              )}
             </Stack>
-          </Card>
-        </Container>
+          </Form>
+
+          <Box mt={12} ta="center">
+            <Anchor component={Link} to={routes.forgotPassword()} size="xs">
+              Forgot password?
+            </Anchor>
+          </Box>
+
+          <Text ta="center" size="sm" c={textSubtle} mt={16}>
+            Don’t have an account?{' '}
+            <Link to={routes.signup()} style={{ fontWeight: 600 }}>
+              Sign up
+            </Link>
+          </Text>
+        </AuthCard>
       </main>
     </>
   )

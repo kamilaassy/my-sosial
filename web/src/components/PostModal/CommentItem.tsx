@@ -7,6 +7,7 @@ import {
   Text,
   ActionIcon,
   useMantineColorScheme,
+  useMantineTheme,
 } from '@mantine/core'
 import { IconCornerDownRight } from '@tabler/icons-react'
 
@@ -15,41 +16,9 @@ import { useAuth } from 'src/auth'
 import CommentForm from './CommentForm'
 import CommentLikeButton from './CommentLikeButton'
 
-type Author = {
-  id: number
-  name?: string | null
-  email: string
-  avatarUrl?: string | null
-}
-
-type CommentLike = {
-  id: number
-  userId: number
-}
-
-type Reply = {
-  id: number
-  content: string
-  author: Author
-  commentLikes: CommentLike[]
-}
-
-type CommentType = {
-  id: number
-  content: string
-  author: Author
-  commentLikes: CommentLike[]
-  replies: Reply[]
-}
-
-type Props = {
-  comment: CommentType
-  postId: number
-  onRefresh: () => void
-}
-
-export default function CommentItem({ comment, postId, onRefresh }: Props) {
+export default function CommentItem({ comment, postId, onRefresh }) {
   const { colorScheme } = useMantineColorScheme()
+  const theme = useMantineTheme()
   const isDark = colorScheme === 'dark'
   const { currentUser } = useAuth()
 
@@ -57,40 +26,39 @@ export default function CommentItem({ comment, postId, onRefresh }: Props) {
   const [showReplies, setShowReplies] = useState(false)
 
   const isLiked = comment.commentLikes.some((l) => l.userId === currentUser?.id)
-  const totalLikes = comment.commentLikes.length
+
+  const textMain = isDark
+    ? theme.colors.purplelux[0]
+    : theme.colors.purplelux[9]
+
+  const textSubtle = isDark
+    ? 'rgba(255,255,255,0.6)'
+    : theme.colors.purplelux[6]
 
   return (
-    <Box mb="md">
+    <Box mb={14}>
       {/* MAIN COMMENT */}
-      <Flex align="flex-start" gap={10}>
+      <Flex gap={10}>
         <Avatar
           src={comment.author.avatarUrl || undefined}
           radius="xl"
-          size="sm"
-          color="purplelux"
+          size={32}
         />
 
-        <Box>
-          {/* USER NAME */}
-          <Text size="sm" fw={700} c={isDark ? 'purplelux.1' : 'purplelux.9'}>
+        <Box style={{ flex: 1 }}>
+          <Text fw={600} size="sm" c={textMain}>
             {comment.author.name || comment.author.email}
           </Text>
 
-          {/* COMMENT TEXT */}
-          <Text
-            size="sm"
-            c={isDark ? 'purplelux.2' : 'purplelux.8'}
-            style={{ lineHeight: 1.45 }}
-          >
+          <Text size="sm" c={textSubtle} style={{ lineHeight: 1.5 }}>
             {comment.content}
           </Text>
 
-          {/* ACTIONS */}
-          <Flex align="center" justify="space-between" mt={4}>
+          <Flex gap={12} mt={4} align="center">
             <CommentLikeButton
               commentId={comment.id}
               isLiked={isLiked}
-              totalLikes={totalLikes}
+              totalLikes={comment.commentLikes.length}
               onRefresh={onRefresh}
             />
 
@@ -99,21 +67,20 @@ export default function CommentItem({ comment, postId, onRefresh }: Props) {
               radius="xl"
               size="sm"
               onClick={() => setReplyMode((v) => !v)}
-              color="purplelux"
             >
-              <IconCornerDownRight size={15} />
+              <IconCornerDownRight size={14} />
             </ActionIcon>
           </Flex>
         </Box>
       </Flex>
 
-      {/* REPLY TOGGLE */}
+      {/* TOGGLE REPLIES */}
       {comment.replies.length > 0 && (
         <Text
           size="xs"
-          ml={40}
-          mt={6}
-          c={isDark ? 'purplelux.3' : 'purplelux.7'}
+          ml={42}
+          mt={4}
+          c={textSubtle}
           style={{ cursor: 'pointer' }}
           onClick={() => setShowReplies((v) => !v)}
         >
@@ -123,26 +90,21 @@ export default function CommentItem({ comment, postId, onRefresh }: Props) {
         </Text>
       )}
 
-      {/* REPLIES LIST */}
+      {/* REPLIES */}
       {showReplies &&
         comment.replies.map((r) => (
-          <Flex key={r.id} gap={10} ml={40} mt={10}>
+          <Flex key={r.id} gap={10} ml={42} mt={10}>
             <Avatar
               src={r.author.avatarUrl || undefined}
               radius="xl"
-              size="sm"
+              size={28}
             />
 
             <Box>
-              <Text
-                fw={600}
-                size="sm"
-                c={isDark ? 'purplelux.1' : 'purplelux.9'}
-              >
+              <Text fw={600} size="sm" c={textMain}>
                 {r.author.name || r.author.email}
               </Text>
-
-              <Text size="sm" c={isDark ? 'purplelux.3' : 'purplelux.7'}>
+              <Text size="sm" c={textSubtle}>
                 {r.content}
               </Text>
             </Box>
@@ -151,7 +113,7 @@ export default function CommentItem({ comment, postId, onRefresh }: Props) {
 
       {/* REPLY FORM */}
       {replyMode && (
-        <Box ml={40} mt={10}>
+        <Box ml={42} mt={10}>
           <CommentForm
             postId={postId}
             parentId={comment.id}

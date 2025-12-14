@@ -7,7 +7,7 @@ import {
   Text,
   Title,
   Button,
-  useComputedColorScheme,
+  useMantineColorScheme,
   useMantineTheme,
 } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
@@ -22,7 +22,7 @@ import type {
   UpdateUserProfileMutation,
 } from 'types/graphql'
 
-import { useParams } from '@redwoodjs/router'
+import { useParams, navigate, routes } from '@redwoodjs/router'
 import { useQuery, useMutation } from '@redwoodjs/web'
 import { toast } from '@redwoodjs/web/toast'
 
@@ -32,11 +32,12 @@ import FollowerListModal from 'src/components/FollowerListModal/FollowerListModa
 import PostModal from 'src/components/PostModal/PostModal'
 import { ProfileMoreMenu } from 'src/components/ProfileMoreMenu/ProfileMoreMenu'
 import { ReportUserModal } from 'src/components/ReportUserModal/ReportUserModal'
-import { Card } from 'src/components/ui/Card'
+// import { Card } from 'src/components/ui/Card'
 import { EditPostModal } from 'src/components/ui/EditPostModal'
 import { EditProfileModal } from 'src/components/ui/EditProfileModal'
 import { FeedCard } from 'src/components/ui/FeedCard'
 import { FollowButton } from 'src/components/ui/FollowButton'
+import { GlassCard } from 'src/components/ui/GlassCard'
 import { PageContainer } from 'src/components/ui/PageContainer'
 import { ProfileHeader } from 'src/components/ui/ProfileHeader'
 import { DELETE_POST_MUTATION } from 'src/graphql/deletePost'
@@ -47,58 +48,94 @@ import { UNBLOCK_USER } from 'src/graphql/unblockUser'
 import { UPDATE_POST_MUTATION } from 'src/graphql/updatePost'
 import { USER_PROFILE_QUERY, TOGGLE_FOLLOW } from 'src/graphql/userProfile'
 
-/* -----------------------------------------------------
-   Reusable Stat Component
------------------------------------------------------ */
-const Stat = ({ label, value }: { label: string; value: number }) => {
+/* ============================================================
+   STAT COMPONENT (GLASS – FINAL)
+============================================================ */
+const Stat = ({
+  label,
+  value,
+  onClick,
+}: {
+  label: string
+  value: number
+  onClick?: () => void
+}) => {
   const theme = useMantineTheme()
-  const isDark = useComputedColorScheme() === 'dark'
+  const { colorScheme } = useMantineColorScheme()
+  const isDark = colorScheme === 'dark'
+
+  const textMain = isDark
+    ? theme.colors.purplelux[0]
+    : theme.colors.purplelux[9]
+
+  const textSubtle = isDark ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.55)'
+
+  const hoverBg = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'
 
   return (
-    <div style={{ textAlign: 'center' }}>
-      <Text
-        fw={700}
-        c={isDark ? theme.colors.purplelux[0] : theme.colors.purplelux[9]}
-      >
+    <div
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={(e) =>
+        onClick && (e.key === 'Enter' || e.key === ' ') && onClick()
+      }
+      style={{
+        textAlign: 'center',
+        padding: '10px 18px',
+        borderRadius: 14,
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'background 0.15s ease, transform 0.1s ease',
+      }}
+      onMouseEnter={(e) => {
+        if (onClick) {
+          e.currentTarget.style.background = hoverBg
+          e.currentTarget.style.transform = 'translateY(-1px)'
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent'
+        e.currentTarget.style.transform = 'translateY(0)'
+      }}
+    >
+      <Text fw={800} size="lg" c={textMain} style={{ lineHeight: 1.2 }}>
         {value}
       </Text>
 
-      <Text
-        size="sm"
-        c={isDark ? theme.colors.purplelux[2] : theme.colors.purplelux[6]}
-      >
+      <Text size="sm" c={textSubtle}>
         {label}
       </Text>
     </div>
   )
 }
 
-/* -----------------------------------------------------
+/* ============================================================
    PROFILE PAGE
------------------------------------------------------ */
+============================================================ */
 export default function ProfilePage() {
-  const [followersModal, setFollowersModal] = useState(false)
-  const [followingModal, setFollowingModal] = useState(false)
-
   const { id } = useParams()
   const userId = Number(id)
 
-  const { currentUser } = useAuth()
+  const { currentUser, logOut } = useAuth()
+
+  // const { colorScheme } = useMantineColorScheme()
+  // const isDark = colorScheme === 'dark'
+
+  const [followersModal, setFollowersModal] = useState(false)
+  const [followingModal, setFollowingModal] = useState(false)
 
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [reportTargetId, setReportTargetId] = useState<number | null>(null)
 
-  // Modal states
   const [editProfileOpened, editProfileHandlers] = useDisclosure(false)
+  const [editPostOpened, editPostHandlers] = useDisclosure(false)
+  const [postModalOpened, postModalHandlers] = useDisclosure(false)
+
   const [selectedPost, setSelectedPost] = useState<
     UserProfileQuery['userPosts'][number] | null
   >(null)
-  const [postModalOpened, postModalHandlers] = useDisclosure(false)
-  const [editPostOpened, editPostHandlers] = useDisclosure(false)
 
-  /* -----------------------------------------------------
-     FETCH USER PROFILE DATA
-  ----------------------------------------------------- */
+  /* ================= LOAD PROFILE ================= */
   const { data, loading, refetch } = useQuery<
     UserProfileQuery,
     UserProfileQueryVariables
@@ -117,26 +154,19 @@ export default function ProfilePage() {
     skip: !followingModal,
   })
 
-  /* -----------------------------------------------------
-     MUTATIONS
-  ----------------------------------------------------- */
+  /* ================= MUTATIONS ================= */
   const [toggleFollow] = useMutation<ToggleFollowMutation>(TOGGLE_FOLLOW, {
-    onCompleted: () => {
-      refetch()
-    },
+    onCompleted: () => refetch(),
     onError: (err) => toast.error(err.message),
   })
 
-  const [togglePostLike] = useMutation<TogglePostLike>(TOGGLE_POST_LIKE, {
-    onError: (err) => toast.error(err.message),
-  })
+  const [togglePostLike] = useMutation<TogglePostLike>(TOGGLE_POST_LIKE)
 
   const [deletePost] = useMutation<DeletePost>(DELETE_POST_MUTATION, {
     onCompleted: () => {
       toast.success('Post deleted')
       refetch()
     },
-    onError: (err) => toast.error(err.message),
   })
 
   const [updatePost] = useMutation<UpdatePostMutation>(UPDATE_POST_MUTATION, {
@@ -144,16 +174,11 @@ export default function ProfilePage() {
       toast.success('Post updated!')
       refetch()
     },
-    onError: (err) => toast.error(err.message),
   })
 
   const [updateProfile] = useMutation<UpdateUserProfileMutation>(
     UPDATE_PROFILE,
     {
-      onCompleted: () => {
-        toast.success('Profile updated!')
-        refetch()
-      },
       onError: (err) => toast.error(err.message),
     }
   )
@@ -163,12 +188,9 @@ export default function ProfilePage() {
       toast.success('User unblocked')
       refetch()
     },
-    onError: (err) => toast.error(err.message),
   })
 
-  /* -----------------------------------------------------
-     LOADING STATES
-  ----------------------------------------------------- */
+  /* ================= LOADING ================= */
   if (loading || !data) {
     return (
       <Center h="100vh">
@@ -177,19 +199,14 @@ export default function ProfilePage() {
     )
   }
 
-  /* -----------------------------------------------------
-     EXTRACT DATA
-  ----------------------------------------------------- */
   const profile = data.userProfile
   const posts = data.userPosts
   const isFollowing = data.isFollowing
   const isMyProfile = currentUser?.id === userId
+
   const isBlockedByMe = profile.isBlockedByMe
   const hasBlockedMe = profile.hasBlockedMe
 
-  /* -----------------------------------------------------
-     RENDER
-  ----------------------------------------------------- */
   return (
     <PageContainer>
       <ReportUserModal
@@ -198,22 +215,29 @@ export default function ProfilePage() {
         reportedId={reportTargetId}
       />
 
-      {/* ----------------------- EDIT PROFILE MODAL ----------------------- */}
+      {/* EDIT PROFILE */}
       <EditProfileModal
         opened={editProfileOpened}
         onClose={editProfileHandlers.close}
         profile={profile}
-        onSave={(payload) =>
-          updateProfile({
-            variables: { input: payload },
-          }).then(() => {
-            editProfileHandlers.close()
-            // refetch handled by mutation onCompleted
-          })
-        }
+        onSave={async (payload) => {
+          const oldEmail = profile.email
+
+          await updateProfile({ variables: { input: payload } })
+
+          editProfileHandlers.close()
+          toast.success('Profile updated!')
+
+          if (payload.email && payload.email !== oldEmail) {
+            toast.success('Username updated — please log in again.')
+            await logOut()
+            navigate(routes.login())
+          } else {
+            refetch()
+          }
+        }}
       />
 
-      {/* ----------------------- POST MODAL (COMMENTS) ----------------------- */}
       <PostModal
         postId={selectedPost?.id}
         opened={postModalOpened}
@@ -223,30 +247,23 @@ export default function ProfilePage() {
         }}
       />
 
-      {/* ----------------------- EDIT POST MODAL ----------------------- */}
       <EditPostModal
         opened={editPostOpened}
         onClose={editPostHandlers.close}
         post={selectedPost}
         onSave={(newContent) => {
           if (!selectedPost) return
-
           updatePost({
-            variables: {
-              id: selectedPost.id,
-              input: { content: newContent },
-            },
-          }).then(() => {
-            editPostHandlers.close()
-            // refetch handled by mutation onCompleted
-          })
+            variables: { id: selectedPost.id, input: { content: newContent } },
+          }).then(editPostHandlers.close)
         }}
       />
 
-      {/* ----------------------- PROFILE HEADER ----------------------- */}
       <ProfileHeader
-        name={profile.name || profile.email}
+        username={profile.email}
+        name={profile.name}
         bio={profile.bio}
+        avatarUrl={profile.avatarUrl || undefined}
         mb={20}
         rightSection={
           !isMyProfile && (
@@ -262,57 +279,45 @@ export default function ProfilePage() {
         }
       />
 
-      {/* --------------------- ADMIN CONTROLS------------------------ */}
       {currentUser?.role === 'admin' && (
         <AdminControls userId={userId} isBanned={profile.isBanned} />
       )}
 
-      {/* ----------------------- STATS ----------------------- */}
-      <Card p="md" mb="lg" withBorder>
+      {/* STATS */}
+      <GlassCard
+        padding="md"
+        radius="lg"
+        mb="lg"
+        style={{
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+        }}
+      >
         <Group justify="center" gap={40}>
           <Stat label="Posts" value={profile.posts} />
-          <div
-            role="button"
-            tabIndex={0}
+
+          <Stat
+            label="Followers"
+            value={profile.followers}
             onClick={() => setFollowersModal(true)}
-            onKeyDown={(e) =>
-              (e.key === 'Enter' || e.key === ' ') && setFollowersModal(true)
-            }
-            style={{ cursor: 'pointer' }}
-          >
-            <Stat label="Followers" value={profile.followers} />
-          </div>
+          />
 
-          <div
-            role="button"
-            tabIndex={0}
+          <Stat
+            label="Following"
+            value={profile.following}
             onClick={() => setFollowingModal(true)}
-            onKeyDown={(e) =>
-              (e.key === 'Enter' || e.key === ' ') && setFollowingModal(true)
-            }
-            style={{ cursor: 'pointer' }}
-          >
-            <Stat label="Following" value={profile.following} />
-          </div>
+          />
         </Group>
-      </Card>
+      </GlassCard>
 
-      {/* ---------------- FOLLOW / BLOCK LOGIC ---------------- */}
+      {/* FOLLOW / BLOCK */}
       {isMyProfile ? (
-        <Button
-          fullWidth
-          radius="md"
-          size="md"
-          mb="lg"
-          onClick={editProfileHandlers.open}
-        >
+        <Button fullWidth mb="lg" onClick={editProfileHandlers.open}>
           Edit Profile
         </Button>
       ) : isBlockedByMe ? (
         <Button
           fullWidth
-          radius="md"
-          size="md"
           mb="lg"
           color="red"
           onClick={() => unblockUser({ variables: { targetUserId: userId } })}
@@ -345,18 +350,12 @@ export default function ProfilePage() {
         users={followingQuery.data?.following || []}
       />
 
-      {/* ----------------------- POSTS TITLE ----------------------- */}
       <Title order={4} mb="md" c="purplelux.9">
         Posts
       </Title>
 
-      {/* ----------------------- POSTS LIST ----------------------- */}
-      {hasBlockedMe ? (
-        <Text c="purplelux.6" ta="center" fw={500} mt="sm">
-          This posts are hidden because they have blocked you.
-        </Text>
-      ) : posts.length === 0 ? (
-        <Text c="purplelux.6" ta="center" fw={500} mt="sm">
+      {posts.length === 0 ? (
+        <Text ta="center" c="purplelux.6">
           No posts yet.
         </Text>
       ) : (
@@ -369,7 +368,7 @@ export default function ProfilePage() {
             <FeedCard
               key={post.id}
               userId={post.user.id}
-              username={post.user.name || ''}
+              username={post.user.email || ''}
               avatarUrl={post.user.avatarUrl || undefined}
               content={post.content || ''}
               imageUrl={post.imageUrl || undefined}
@@ -387,12 +386,7 @@ export default function ProfilePage() {
                 modals.openConfirmModal({
                   title: 'Delete Post',
                   centered: true,
-                  children: (
-                    <Text size="sm">
-                      Are you sure you want to delete this post?
-                    </Text>
-                  ),
-                  labels: { confirm: 'Delete', cancel: 'Cancel' },
+                  children: <Text size="sm">Delete this post?</Text>,
                   confirmProps: { color: 'red' },
                   onConfirm: () => deletePost({ variables: { id: post.id } }),
                 })

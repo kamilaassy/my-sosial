@@ -1,12 +1,11 @@
 import {
-  Card,
+  Box,
   Text,
   Group,
   Badge,
   Button,
   SimpleGrid,
   Loader,
-  Box,
   Title,
   Divider,
   useMantineColorScheme,
@@ -26,8 +25,10 @@ import {
 import { navigate, routes } from '@redwoodjs/router'
 import { useQuery } from '@redwoodjs/web'
 
+import { GlassCard } from 'src/components/ui/GlassCard'
+
 /* ======================================================
-    GRAPHQL DASHBOARD QUERY
+   GRAPHQL DASHBOARD QUERY
 ====================================================== */
 export const DASHBOARD_QUERY = gql`
   query AdminDashboard {
@@ -44,15 +45,11 @@ export const DASHBOARD_QUERY = gql`
   }
 `
 
-/* ======================================================
-    PAGE COMPONENT
-====================================================== */
-
 export default function AdminDashboardPage() {
   const isSmall = useMediaQuery('(max-width: 768px)')
   const { colorScheme } = useMantineColorScheme()
   const theme = useMantineTheme()
-  const dark = colorScheme === 'dark'
+  const isDark = colorScheme === 'dark'
 
   const { data, loading, error } = useQuery(DASHBOARD_QUERY, {
     fetchPolicy: 'cache-and-network',
@@ -64,172 +61,167 @@ export default function AdminDashboardPage() {
         <Loader />
       </Box>
     )
-  if (error) return <Text color="red">Error: {error.message}</Text>
+
+  if (error) return <Text c="red">{error.message}</Text>
   if (!data?.adminStats)
-    return <Text color="red">No dashboard data available.</Text>
+    return <Text c="red">No dashboard data available.</Text>
 
   const stats = data.adminStats
 
   const chartData =
-    stats.weeklyPosts && stats.weeklyPosts.length > 0
+    stats.weeklyPosts?.length > 0
       ? stats.weeklyPosts.map((w) => ({
           name: w.week,
           value: w.count,
         }))
-      : // fallback: 4 empty weeks
-        [
+      : [
           { name: 'W-3', value: 0 },
           { name: 'W-2', value: 0 },
           { name: 'W-1', value: 0 },
           { name: 'Now', value: 0 },
         ]
 
-  // Theme-driven colors (uses your purplelux palette)
-  const axisColor = dark ? theme.colors.purplelux[0] : theme.colors.purplelux[8]
-  const barColor = dark ? theme.colors.purplelux[2] : theme.colors.purplelux[5]
-  const barGradientId = 'barGradientFill'
-  const tooltipBg = dark ? theme.colors.purplelux[8] : theme.colors.purplelux[0]
-  const tooltipText = dark
+  /* =========================
+     THEME TOKENS
+  ========================= */
+  const textMain = isDark
     ? theme.colors.purplelux[0]
     : theme.colors.purplelux[9]
-  const gridStroke = dark
-    ? theme.colors.purplelux[7]
-    : theme.colors.purplelux[2]
+
+  const textSubtle = isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)'
+
+  const barColor = isDark
+    ? theme.colors.purplelux[4]
+    : theme.colors.purplelux[6]
+
+  const gridStroke = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'
 
   return (
-    <Card p="lg">
+    <Box>
+      {/* HEADER */}
       <Group justify="space-between" mb="md">
-        <Title order={2}>Admin Dashboard</Title>
+        <Title order={2} c={textMain}>
+          Admin Dashboard
+        </Title>
       </Group>
 
       <Divider my="sm" />
 
-      {/* ======================================================
-          KPI CARDS
-      ====================================================== */}
+      {/* =========================
+         KPI GLASS CARDS
+      ========================= */}
       <SimpleGrid cols={isSmall ? 1 : 2} spacing="lg">
-        <Card withBorder p="md" radius="md">
-          <Text fw={600} size="lg">
+        <GlassCard padding="md">
+          <Text fw={600} c={textSubtle}>
             Total Users
           </Text>
-          <Text fw={700} size="xl">
+          <Text fw={800} size="xl" c={textMain}>
             {stats.totalUsers}
           </Text>
-        </Card>
+        </GlassCard>
 
-        <Card withBorder p="md" radius="md">
-          <Text fw={600} size="lg">
+        <GlassCard padding="md">
+          <Text fw={600} c={textSubtle}>
             Banned Users
           </Text>
-          <Text fw={700} size="xl">
+          <Text fw={800} size="xl" c={textMain}>
             {stats.bannedUsers}
           </Text>
           <Badge color="red" mt="xs">
             {stats.bannedUsers} banned
           </Badge>
-        </Card>
+        </GlassCard>
 
-        <Card withBorder p="md" radius="md">
-          <Text fw={600} size="lg">
+        <GlassCard padding="md">
+          <Text fw={600} c={textSubtle}>
             Total Reports
           </Text>
-          <Text fw={700} size="xl">
+          <Text fw={800} size="xl" c={textMain}>
             {stats.totalReports}
           </Text>
-        </Card>
+        </GlassCard>
 
-        <Card withBorder p="md" radius="md">
-          <Text fw={600} size="lg">
+        <GlassCard padding="md">
+          <Text fw={600} c={textSubtle}>
             Pending Reports
           </Text>
-          <Text fw={700} size="xl">
+          <Text fw={800} size="xl" c={textMain}>
             {stats.pendingReports}
           </Text>
           <Badge color="yellow" mt="xs">
             {stats.pendingReports} pending
           </Badge>
-        </Card>
+        </GlassCard>
       </SimpleGrid>
 
       <Divider my="lg" />
 
-      {/* ======================================================
-          WEEKLY ACTIVITY CHART
-      ====================================================== */}
-      <Box style={{ width: '100%', height: 340 }}>
-        {/* Use an SVG gradient so bars get a soft fill */}
-        <svg width="0" height="0" style={{ position: 'absolute' }}>
-          <defs>
-            <linearGradient id={barGradientId} x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor={barColor} stopOpacity={0.95} />
-              <stop offset="100%" stopColor={barColor} stopOpacity={0.6} />
-            </linearGradient>
-          </defs>
-        </svg>
+      {/* =========================
+         WEEKLY POSTS CHART
+      ========================= */}
+      <GlassCard padding="md">
+        <Text fw={700} mb="sm" c={textMain}>
+          Weekly Posts Activity
+        </Text>
 
-        <ResponsiveContainer>
-          <BarChart
-            data={chartData}
-            margin={{ top: 10, right: 16, left: 0, bottom: 8 }}
-          >
-            <CartesianGrid
-              stroke={gridStroke}
-              strokeDasharray="3 3"
-              vertical={false}
-            />
-            <XAxis
-              dataKey="name"
-              stroke={axisColor}
-              tick={{ fill: axisColor, fontSize: 12 }}
-            />
-            <YAxis
-              stroke={axisColor}
-              tick={{ fill: axisColor, fontSize: 12 }}
-            />
+        <Box style={{ width: '100%', height: 320 }}>
+          <ResponsiveContainer>
+            <BarChart data={chartData}>
+              <CartesianGrid
+                stroke={gridStroke}
+                strokeDasharray="3 3"
+                vertical={false}
+              />
 
-            <ReTooltip
-              wrapperStyle={{
-                backgroundColor: tooltipBg,
-                borderRadius: 10,
-                padding: 8,
-                border: `1px solid ${theme.colors.purplelux[3]}`,
-                boxShadow: 'rgba(0,0,0,0.12) 0px 6px 18px',
-              }}
-              labelStyle={{ color: tooltipText }}
-              itemStyle={{ color: tooltipText }}
-            />
+              <XAxis
+                dataKey="name"
+                tick={{ fill: textSubtle, fontSize: 12 }}
+                stroke={gridStroke}
+              />
+              <YAxis
+                tick={{ fill: textSubtle, fontSize: 12 }}
+                stroke={gridStroke}
+              />
 
-            <Bar
-              dataKey="value"
-              fill={`url(#${barGradientId})`}
-              stroke={barColor}
-              radius={[8, 8, 0, 0]}
-              maxBarSize={48}
-              animationDuration={700}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </Box>
+              <ReTooltip
+                contentStyle={{
+                  background: isDark
+                    ? 'rgba(20,20,28,0.9)'
+                    : 'rgba(255,255,255,0.9)',
+                  borderRadius: 10,
+                  border: gridStroke,
+                  color: textMain,
+                }}
+              />
+
+              {/* ❌ NO GRADIENT */}
+              <Bar
+                dataKey="value"
+                fill={barColor}
+                radius={[8, 8, 0, 0]}
+                maxBarSize={48}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </Box>
+      </GlassCard>
 
       <Divider my="lg" />
 
-      {/* ======================================================
-          QUICK ACTIONS
-      ====================================================== */}
-      <Group mt="md">
-        <Button
-          onClick={() => navigate(routes.adminReports())}
-          variant="filled"
-        >
+      {/* =========================
+         QUICK ACTIONS
+      ========================= */}
+      <Group>
+        <Button onClick={() => navigate(routes.adminReports())}>
           View Reports
         </Button>
 
-        <Button variant="outline" onClick={() => navigate(routes.adminUsers())}>
+        <Button variant="light" onClick={() => navigate(routes.adminUsers())}>
           Manage Users
         </Button>
 
-        <Button variant="light">System Settings</Button>
+        <Button variant="subtle">System Settings</Button>
       </Group>
-    </Card>
+    </Box>
   )
 }

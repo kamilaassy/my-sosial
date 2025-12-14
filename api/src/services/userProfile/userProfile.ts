@@ -6,6 +6,7 @@ import {
   context,
 } from '@redwoodjs/graphql-server'
 
+import { uploadAvatarBuffer } from 'src/lib/cloudinary'
 import { db } from 'src/lib/db'
 
 export const userProfile: QueryResolvers['userProfile'] = async ({ id }) => {
@@ -223,15 +224,54 @@ export const updateUserProfile: MutationResolvers['updateUserProfile'] =
     const currentUserId = context.currentUser?.id
     if (!currentUserId) throw new AuthenticationError('Not authenticated')
 
+    // ===============================
+    // VALIDASI USERNAME / EMAIL
+    // ===============================
+    if (input.email) {
+      const exists = await db.user.findUnique({
+        where: { email: input.email },
+      })
+
+      if (exists && exists.id !== currentUserId) {
+        throw new Error('Username already taken')
+      }
+    }
+
+    // ===============================
+    // AVATAR UPLOAD (OPTIONAL)
+    // ===============================
+    let avatarUrl: string | undefined = undefined
+
+    if (input.avatarBase64) {
+      const matches = input.avatarBase64.match(
+        /^data:(image\/\w+);base64,(.+)$/
+      )
+
+      if (!matches) {
+        throw new Error('Invalid avatar image format')
+      }
+
+      const buffer = Buffer.from(matches[2], 'base64')
+
+      avatarUrl = await uploadAvatarBuffer(buffer)
+    }
+
+    // ===============================
+    // UPDATE USER
+    // ===============================
     const updated = await db.user.update({
       where: { id: currentUserId },
       data: {
-        name: input.name,
-        bio: input.bio,
-        avatarUrl: input.avatarUrl,
+        email: input.email ?? undefined,
+        name: input.name ?? undefined,
+        bio: input.bio ?? undefined,
+        ...(avatarUrl && { avatarUrl }),
       },
     })
 
+    // ===============================
+    // COUNTERS
+    // ===============================
     const followers = await db.follow.count({
       where: { followingId: currentUserId },
     })
@@ -249,8 +289,6 @@ export const updateUserProfile: MutationResolvers['updateUserProfile'] =
       followers,
       following,
       posts,
-
-      // NEW — required by SDL (default values OK)
       isBlockedByMe: false,
       hasBlockedMe: false,
     }

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState } from 'react'
 
 import {
   Box,
   Text,
   Group,
   Avatar,
+  Button,
   useMantineTheme,
   useMantineColorScheme,
 } from '@mantine/core'
@@ -20,16 +21,11 @@ import {
 } from 'src/graphql/notifications'
 
 export default function NotificationsPage() {
-  /** -------------------------
-   * Modal State
-   ------------------------- */
-  const [openedPostId, setOpenedPostId] = useState<number | null>(null)
-  const openPost = (id: number) => setOpenedPostId(id)
-  const closePost = () => setOpenedPostId(null)
+  const theme = useMantineTheme()
+  const { colorScheme } = useMantineColorScheme()
+  const isDark = colorScheme === 'dark'
 
-  /** -------------------------
-   * API Calls
-   ------------------------- */
+  /* ================= DATA ================= */
   const { data, loading, refetch } = useQuery(GET_NOTIFICATIONS)
   const notifications = data?.notifications || []
 
@@ -37,53 +33,55 @@ export default function NotificationsPage() {
     onCompleted: () => refetch(),
   })
 
-  const [markAll] = useMutation(MARK_ALL_READ, {
+  const [markAllRead] = useMutation(MARK_ALL_READ, {
     onCompleted: () => refetch(),
   })
 
-  /** -------------------------
-   * Mark all unread as read (safe)
-   ------------------------- */
-  const hasMarkedRef = useRef(false)
+  /* ================= POST MODAL ================= */
+  const [openedPostId, setOpenedPostId] = useState<number | null>(null)
 
-  useEffect(() => {
-    if (
-      !loading &&
-      !hasMarkedRef.current &&
-      notifications.some((n) => !n.isRead)
-    ) {
-      markAll()
-      hasMarkedRef.current = true
-    }
-  }, [loading, notifications])
+  /* ================= THEME ================= */
+  const pageBg = isDark ? 'rgba(18,18,26,0.55)' : 'rgba(255,255,255,0.65)'
 
-  /** -------------------------
-   * Theme Setup
-   ------------------------- */
-  const theme = useMantineTheme()
-  const { colorScheme } = useMantineColorScheme()
-  const isDark = colorScheme === 'dark'
+  const cardBg = isDark ? 'rgba(30,30,42,0.55)' : 'rgba(255,255,255,0.75)'
 
-  const cardBg = isDark ? theme.colors.purplelux[8] : theme.colors.purplelux[0]
-  const unreadBg = isDark
-    ? theme.colors.purplelux[7]
-    : theme.colors.purplelux[1]
+  const unreadBg = isDark ? 'rgba(120,120,255,0.18)' : 'rgba(160,160,255,0.25)'
 
-  const hoverBg = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'
+  const hoverBg = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
 
   return (
     <>
-      <Box style={{ maxWidth: 600, margin: '0 auto', padding: 20 }}>
-        <Text fw={700} size="xl" mb={20}>
-          Notifications
-        </Text>
+      <Box
+        style={{
+          maxWidth: 620,
+          margin: '0 auto',
+          padding: 24,
+          background: pageBg,
+          borderRadius: 20,
+          backdropFilter: 'blur(20px)',
+        }}
+      >
+        {/* HEADER */}
+        <Group justify="space-between" mb="lg">
+          <Text fw={800} size="xl">
+            Notifications
+          </Text>
 
-        {loading && <Text>Loading...</Text>}
+          {notifications.some((n) => !n.isRead) && (
+            <Button size="xs" variant="light" onClick={() => markAllRead()}>
+              Mark all read
+            </Button>
+          )}
+        </Group>
+
+        {/* STATES */}
+        {loading && <Text c="dimmed">Loading…</Text>}
 
         {!loading && notifications.length === 0 && (
           <Text c="dimmed">No notifications yet</Text>
         )}
 
+        {/* LIST */}
         {notifications.map((n) => {
           const bg = n.isRead ? cardBg : unreadBg
 
@@ -91,21 +89,23 @@ export default function NotificationsPage() {
             <Box
               key={n.id}
               onClick={() => {
-                if (!n.isRead) markRead({ variables: { id: n.id } })
+                if (!n.isRead) {
+                  markRead({ variables: { id: n.id } })
+                }
 
                 if (n.postId) {
-                  openPost(n.postId)
+                  setOpenedPostId(n.postId)
                 } else if (n.type === 'FOLLOW') {
                   navigate(routes.profile({ id: n.fromUser.id }))
                 }
               }}
               style={{
                 background: bg,
-                padding: 15,
-                borderRadius: 14,
+                padding: 14,
+                borderRadius: 16,
                 marginBottom: 14,
                 cursor: 'pointer',
-                transition: '0.15s ease',
+                transition: 'background 0.15s ease',
               }}
               onMouseEnter={(e) => (e.currentTarget.style.background = hoverBg)}
               onMouseLeave={(e) => (e.currentTarget.style.background = bg)}
@@ -114,7 +114,7 @@ export default function NotificationsPage() {
                 <Avatar
                   src={n.fromUser.avatarUrl || undefined}
                   radius="xl"
-                  size={45}
+                  size={46}
                 />
 
                 <Box style={{ flex: 1 }}>
@@ -124,28 +124,25 @@ export default function NotificationsPage() {
                     {!n.isRead && (
                       <Box
                         style={{
-                          width: 10,
-                          height: 10,
+                          width: 8,
+                          height: 8,
                           borderRadius: '50%',
-                          background: isDark
-                            ? theme.colors.purplelux[2]
-                            : theme.colors.purplelux[8],
+                          background: theme.colors.purplelux[5],
                         }}
                       />
                     )}
                   </Group>
 
-                  <Box style={{ fontSize: 14, marginTop: 4 }}>
-                    {n.type === 'LIKE' && <span>liked your post</span>}
-
+                  <Text size="sm" mt={4}>
+                    {n.type === 'LIKE' && 'liked your post'}
                     {n.type === 'COMMENT' && (
-                      <span>
-                        commented: <b>{n.commentText}</b>
-                      </span>
+                      <>
+                        commented:
+                        <b> {n.commentText}</b>
+                      </>
                     )}
-
-                    {n.type === 'FOLLOW' && <span>followed you</span>}
-                  </Box>
+                    {n.type === 'FOLLOW' && 'followed you'}
+                  </Text>
 
                   <Text size="xs" c="dimmed" mt={6}>
                     {new Date(n.createdAt).toLocaleString()}
@@ -157,11 +154,11 @@ export default function NotificationsPage() {
         })}
       </Box>
 
-      {/* ⭐ POST MODAL — X button works, smooth, clean */}
+      {/* POST MODAL */}
       <PostModal
         postId={openedPostId}
         opened={!!openedPostId}
-        onClose={closePost}
+        onClose={() => setOpenedPostId(null)}
       />
     </>
   )

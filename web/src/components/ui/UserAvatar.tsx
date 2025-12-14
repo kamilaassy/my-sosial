@@ -1,18 +1,27 @@
 import { Avatar } from '@mantine/core'
 
-export const UserAvatar = ({ name, size = 40 }) => {
+type UserAvatarProps = {
+  name: string
+  src?: string | null
+  size?: number
+}
+
+export const UserAvatar = ({ name, src, size = 40 }: UserAvatarProps) => {
+  const fallback = name?.[0]?.toUpperCase() || '?'
+
   return (
     <Avatar
       radius="xl"
       size={size}
+      src={src || undefined}
       color="purplelux"
-      variant="gradient"
+      variant={src ? 'filled' : 'gradient'}
       gradient={{ from: 'purplelux.3', to: 'purplelux.5', deg: 180 }}
       style={{
         boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
       }}
     >
-      {name?.[0]?.toUpperCase()}
+      {!src && fallback}
     </Avatar>
   )
 }

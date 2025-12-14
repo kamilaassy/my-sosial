@@ -5,7 +5,6 @@ import {
   TextInput,
   Group,
   Avatar,
-  Paper,
   Text,
   Loader,
   useMantineColorScheme,
@@ -15,8 +14,9 @@ import {
 import { navigate, routes } from '@redwoodjs/router'
 import { useQuery } from '@redwoodjs/web'
 
+import { GlassCard } from 'src/components/ui/GlassCard'
+import { PageContainer } from 'src/components/ui/PageContainer'
 import { SEARCH_USERS } from 'src/graphql/searchUsers'
-import MainLayout from 'src/layouts/MainLayout/MainLayout'
 
 export default function SearchPage() {
   const theme = useMantineTheme()
@@ -33,63 +33,92 @@ export default function SearchPage() {
 
   const results = data?.searchUsers ?? []
 
+  // ================= THEME TOKENS =================
+  const glassSoft = isDark ? 'rgba(8,8,12,0.28)' : 'rgba(255,255,255,0.22)'
+
+  const textMain = isDark
+    ? theme.colors.purplelux[0]
+    : theme.colors.purplelux[9]
+
+  const textSubtle = isDark
+    ? theme.colors.purplelux[2]
+    : theme.colors.purplelux[6]
+
   return (
-    <MainLayout>
-      <Box style={{ maxWidth: 600, margin: '0 auto', padding: 20 }}>
+    <PageContainer>
+      <Box style={{ maxWidth: 620, margin: '0 auto', padding: 20 }}>
+        {/* SEARCH INPUT */}
         <TextInput
           placeholder="Search users..."
           radius="md"
           size="md"
           value={query}
           onChange={(e) => setQuery(e.currentTarget.value)}
+          styles={{
+            input: {
+              background: glassSoft,
+              backdropFilter: 'blur(14px)',
+              borderColor: isDark
+                ? theme.colors.purplelux[7]
+                : theme.colors.purplelux[3],
+            },
+          }}
         />
 
+        {/* LOADING */}
         {loading && (
           <Group justify="center" mt="lg">
             <Loader />
           </Group>
         )}
 
+        {/* EMPTY */}
         {!loading && query.length > 0 && results.length === 0 && (
           <Text size="sm" c="dimmed" mt="md">
             No users found.
           </Text>
         )}
 
+        {/* RESULTS */}
         <Box mt="lg">
           {results.map((user) => (
-            <Paper
+            <Box
               key={user.id}
-              p="sm"
-              radius="md"
-              withBorder
-              style={{
-                marginBottom: 10,
-                cursor: 'pointer',
-                backgroundColor: isDark
-                  ? theme.colors.purplelux[8]
-                  : theme.colors.purplelux[1],
-              }}
               onClick={() => navigate(routes.profile({ id: user.id }))}
+              style={{ cursor: 'pointer' }}
             >
-              <Group>
-                <Avatar
-                  src={user.avatarUrl || undefined}
-                  radius="xl"
-                  size="lg"
-                />
+              <GlassCard
+                padding="md"
+                radius={18}
+                mb="sm"
+                style={{
+                  background: glassSoft,
+                  backdropFilter: 'blur(14px)',
+                  transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                }}
+              >
+                <Group>
+                  <Avatar
+                    src={user.avatarUrl || undefined}
+                    radius="xl"
+                    size={44}
+                  />
 
-                <Box>
-                  <Text fw={600}>{user.name || user.email}</Text>
-                  <Text size="sm" c="dimmed">
-                    {user.email}
-                  </Text>
-                </Box>
-              </Group>
-            </Paper>
+                  <Box>
+                    <Text fw={600} c={textMain}>
+                      {user.name || user.email}
+                    </Text>
+
+                    <Text size="sm" c={textSubtle}>
+                      {user.email}
+                    </Text>
+                  </Box>
+                </Group>
+              </GlassCard>
+            </Box>
           ))}
         </Box>
       </Box>
-    </MainLayout>
+    </PageContainer>
   )
 }

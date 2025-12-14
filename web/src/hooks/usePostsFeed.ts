@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 
-import { DeletePost, TogglePostLike } from 'types/graphql'
+import type { DeletePost, TogglePostLike } from 'types/graphql'
 
 import { useQuery, useMutation } from '@redwoodjs/web'
 import { toast } from '@redwoodjs/web/toast'
@@ -8,34 +8,59 @@ import { toast } from '@redwoodjs/web/toast'
 import { DELETE_POST_MUTATION } from 'src/graphql/deletePost'
 import { GET_POSTS } from 'src/graphql/posts'
 import { TOGGLE_POST_LIKE } from 'src/graphql/togglePostLike'
-import type { FeedPost } from 'src/types/posts'
+import type { FeedPostDTO } from 'src/types/feed'
+// import type { FeedPost } from 'src/types/posts'
 
 export const usePostsFeed = () => {
   const TAKE = 10
 
-  const [posts, setPosts] = useState<FeedPost[]>([])
+  const [posts, setPosts] = useState<FeedPostDTO[]>([])
+
   const [openedPostId, setOpenedPostId] = useState<number | null>(null)
   const [hasMore, setHasMore] = useState(true)
   const [isFetchingMore, setIsFetchingMore] = useState(false)
 
-  /** QUERY */
+  /* ======================================================
+     QUERY POSTS
+  ====================================================== */
   const { data, loading, error, fetchMore, refetch } = useQuery(GET_POSTS, {
     variables: { skip: 0, take: TAKE },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: 'no-cache',
   })
 
-  /** INITIAL LOAD */
+  /* ======================================================
+     INITIAL LOAD
+  ====================================================== */
   useEffect(() => {
-    if (data?.posts) {
-      const unique = Array.from(
-        new Map(data.posts.map((p) => [p.id, p])).values()
-      ) as FeedPost[]
+    if (!data?.posts) return
 
-      setPosts(unique)
-    }
+    const normalized: FeedPostDTO[] = data.posts.map((p) => ({
+      ...p,
+    }))
+
+    const unique = Array.from(
+      new Map(normalized.map((p) => [p.id, p])).values()
+    )
+
+    setPosts(unique)
   }, [data])
 
-  /** INFINITE SCROLL HANDLER */
+  /* ======================================================
+     MANUAL REFRESH
+  ====================================================== */
+  const refreshPosts = async () => {
+    const res = await refetch()
+    const fresh = (res.data?.posts ?? []) as FeedPostDTO[]
+
+    const unique = Array.from(new Map(fresh.map((p) => [p.id, p])).values())
+
+    setPosts(unique)
+    setHasMore(true)
+  }
+
+  /* ======================================================
+     INFINITE SCROLL
+  ====================================================== */
   const handleScroll = useCallback(() => {
     const reachedBottom =
       window.innerHeight + window.scrollY >= document.body.offsetHeight - 300
@@ -45,21 +70,27 @@ export const usePostsFeed = () => {
     setIsFetchingMore(true)
 
     fetchMore({
-      variables: { skip: posts.length, take: TAKE },
-    })
-      .then((res) => {
-        const newPosts = res.data?.posts || []
-
-        if (newPosts.length === 0) {
+      variables: {
+        skip: posts.length,
+        take: TAKE,
+      },
+      updateQuery: (prev, { fetchMoreResult }) => {
+        if (!fetchMoreResult || fetchMoreResult.posts.length === 0) {
           setHasMore(false)
-          return
+          return prev
         }
 
-        setPosts((prev) => {
-          const merged = [...prev, ...newPosts]
-          return Array.from(new Map(merged.map((p) => [p.id, p])).values())
-        })
-      })
+        return {
+          posts: [
+            ...prev.posts,
+            ...fetchMoreResult.posts.filter(
+              (p) => !prev.posts.some((old) => old.id === p.id)
+            ),
+          ],
+        }
+      },
+    })
+      .catch(() => toast.error('Failed loading more posts'))
       .finally(() => setIsFetchingMore(false))
   }, [posts.length, isFetchingMore, hasMore, fetchMore])
 
@@ -68,7 +99,9 @@ export const usePostsFeed = () => {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [handleScroll])
 
-  /** DELETE POST */
+  /* ======================================================
+     DELETE POST
+  ====================================================== */
   const [deletePost] = useMutation<DeletePost>(DELETE_POST_MUTATION, {
     onCompleted: ({ deletePost }) => {
       setPosts((prev) => prev.filter((p) => p.id !== deletePost.id))
@@ -77,7 +110,9 @@ export const usePostsFeed = () => {
     onError: (err) => toast.error(err.message),
   })
 
-  /** LIKE / UNLIKE POST */
+  /* ======================================================
+     LIKE / UNLIKE
+  ====================================================== */
   const [togglePostLike] = useMutation<TogglePostLike>(TOGGLE_POST_LIKE, {
     onCompleted: ({ togglePostLike }) => {
       const updated = togglePostLike.post
@@ -94,8 +129,9 @@ export const usePostsFeed = () => {
     loading,
     error,
     isFetchingMore,
-    refetch,
+    hasMore,
     deletePost,
     togglePostLike,
+    refreshPosts,
   }
 }

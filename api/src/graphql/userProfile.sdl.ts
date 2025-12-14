@@ -28,9 +28,10 @@ export const schema = gql`
   }
 
   input UpdateUserProfileInput {
+    email: String
     name: String
     bio: String
-    avatarUrl: String
+    avatarBase64: String
   }
 
   type Query {

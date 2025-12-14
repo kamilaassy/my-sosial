@@ -1,21 +1,13 @@
-import {
-  Box,
-  ActionIcon,
-  Tooltip,
-  Text,
-  useMantineTheme,
-  useMantineColorScheme,
-  Badge,
-} from '@mantine/core'
+import { useState } from 'react'
+
+import { Box, Tooltip, Text, useMantineColorScheme, Badge } from '@mantine/core'
 import {
   IconHome2,
   IconSearch,
-  IconMessageCircle,
   IconBell,
   IconPlus,
   IconUser,
   IconLogout,
-  IconSettings,
   IconSun,
   IconMoon,
   IconShield,
@@ -25,32 +17,66 @@ import { navigate, routes, useLocation } from '@redwoodjs/router'
 import { useQuery } from '@redwoodjs/web'
 
 import { useAuth } from 'src/auth'
+import { usePostComposer } from 'src/components/PostComposer/PostComposerContext'
 import { GET_UNREAD_COUNT } from 'src/graphql/notifications'
 
 export const Navbar = ({ disabled = false }) => {
-  const theme = useMantineTheme()
   const { colorScheme, toggleColorScheme } = useMantineColorScheme()
   const isDark = colorScheme === 'dark'
   const location = useLocation()
   const { currentUser, logOut } = useAuth()
+  const { open: openComposer } = usePostComposer()
 
-  // UNREAD NOTIFICATION (auto-disabled if banned)
+  /* =========================
+     UNREAD NOTIFICATIONS
+     ========================= */
   const { data } = useQuery(GET_UNREAD_COUNT, {
     pollInterval: 3000,
     skip: disabled,
   })
   const unread = disabled ? 0 : data?.unreadNotificationsCount || 0
 
-  // PurpleLux tokens
-  const bg = isDark ? theme.colors.purplelux[9] : theme.colors.purplelux[1]
-  const border = isDark ? theme.colors.purplelux[7] : theme.colors.purplelux[3]
-  const iconColor = isDark
-    ? theme.colors.purplelux[1]
-    : theme.colors.purplelux[9]
+  /* =========================
+     THEME TOKENS
+     ========================= */
+  const glassBg = isDark ? 'rgba(20,20,28,0.55)' : 'rgba(255,255,255,0.65)'
 
-  /* =========================================================
-     ORIGINAL MENU ITEMS (yang kamu punya)
-     ========================================================= */
+  const glassBorder = isDark
+    ? '1px solid rgba(255,255,255,0.08)'
+    : '1px solid rgba(0,0,0,0.08)'
+
+  const activeBg = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)'
+
+  const iconColor = isDark ? 'rgba(255,255,255,0.88)' : 'rgba(0,0,0,0.78)'
+
+  /* =========================
+     NAV ITEM STYLE (FINAL)
+     ========================= */
+  const navItemStyle = {
+    width: 52,
+    height: 46,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14, // 🔥 rounded kotak
+    cursor: 'pointer',
+    transition: 'background 0.15s ease',
+  }
+
+  /* =========================
+     ROUTE ACTIVE CHECK
+     ========================= */
+  const isRouteActive = (route?: string) => {
+    if (!route) return false
+    if (route === '/') return location.pathname === '/'
+    return (
+      location.pathname === route || location.pathname.startsWith(route + '/')
+    )
+  }
+
+  /* =========================
+     MENU DEFINITIONS
+     ========================= */
   const baseMenu = [
     {
       label: 'Home',
@@ -65,10 +91,10 @@ export const Navbar = ({ disabled = false }) => {
       action: () => navigate('/search'),
     },
     {
-      label: 'Messages',
-      icon: IconMessageCircle,
-      route: '/messages',
-      action: () => navigate('/messages'),
+      label: 'Create Post',
+      icon: IconPlus,
+      route: undefined,
+      action: () => openComposer(),
     },
     {
       label: 'Notifications',
@@ -77,35 +103,20 @@ export const Navbar = ({ disabled = false }) => {
       action: () => navigate(routes.notifications()),
     },
     {
-      label: 'Create Post',
-      icon: IconPlus,
-      route: '/create',
-      action: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
-    },
-    {
       label: 'Profile',
       icon: IconUser,
-      route: currentUser?.id ? `/profile/${currentUser.id}` : '',
+      route: currentUser?.id ? `/profile/${currentUser.id}` : undefined,
       action: () => navigate(routes.profile({ id: currentUser?.id })),
-    },
-    {
-      label: 'Settings',
-      icon: IconSettings,
-      route: '/settings',
-      action: () => navigate('/settings'),
     },
   ]
 
-  /* =========================================================
-     ADMIN MENU (TAMBAHAN)
-     ========================================================= */
   const adminMenu =
-    currentUser?.role?.toLowerCase() === 'admin'
+    currentUser?.role === 'admin'
       ? [
           {
             label: 'Admin Panel',
             icon: IconShield,
-            route: '/admin/dashboard',
+            route: '/admin',
             action: () => navigate('/admin/dashboard'),
           },
         ]
@@ -113,90 +124,84 @@ export const Navbar = ({ disabled = false }) => {
 
   const menu = [...baseMenu, ...adminMenu]
 
-  /* =========================================================
+  const [hovered, setHovered] = useState<string | null>(null)
+
+  /* =========================
      RENDER
-     ========================================================= */
+     ========================= */
   return (
     <Box
       style={{
-        width: 90,
+        width: 88,
         height: '100vh',
-        backgroundColor: bg,
-        borderRight: `1px solid ${border}`,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '22px 0',
         position: 'fixed',
         left: 0,
         top: 0,
         zIndex: 9999,
 
-        // banned mode
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: '22px 0',
+
+        background: glassBg,
+        backdropFilter: 'blur(22px)',
+        WebkitBackdropFilter: 'blur(22px)',
+        borderRight: glassBorder,
+
         pointerEvents: disabled ? 'none' : 'auto',
-        opacity: disabled ? 0.4 : 1,
-        filter: disabled ? 'grayscale(60%)' : 'none',
+        opacity: disabled ? 0.45 : 1,
       }}
     >
-      {/* Logo */}
+      {/* LOGO */}
       <Text
         fw={900}
         size="xl"
         style={{
           color: iconColor,
-          fontFamily: 'Poppins',
-          letterSpacing: 1,
+          letterSpacing: 1.2,
+          marginBottom: 6,
         }}
       >
         EFVN
       </Text>
 
-      {/* Admin Badge */}
+      {/* ADMIN BADGE */}
       {currentUser?.role === 'admin' && (
         <Badge
-          variant="filled"
+          size="xs"
           color="purplelux"
-          style={{
-            textTransform: 'uppercase',
-            marginTop: 4,
-            marginBottom: 10,
-            fontSize: 10,
-            fontWeight: 700,
-          }}
+          variant="filled"
+          mb={10}
+          style={{ fontWeight: 700 }}
         >
-          Admin
+          ADMIN
         </Badge>
       )}
 
-      {/* Theme Toggle */}
-      <ActionIcon
-        radius="xl"
-        size={34}
-        variant="light"
+      {/* THEME TOGGLE */}
+      <Box
         onClick={!disabled ? toggleColorScheme : undefined}
         style={{
+          ...navItemStyle,
           color: iconColor,
-          cursor: disabled ? 'not-allowed' : 'pointer',
         }}
       >
         {isDark ? <IconSun size={20} /> : <IconMoon size={20} />}
-      </ActionIcon>
+      </Box>
 
-      {/* Navigation Icons */}
+      {/* NAV ITEMS */}
       <Box
         style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
-          gap: 24,
+          gap: 22,
         }}
       >
         {menu.map((item) => {
-          const isActive =
-            location.pathname === item.route ||
-            location.pathname.startsWith(item.route)
+          const isActive = isRouteActive(item.route)
 
           return (
             <Tooltip
@@ -204,27 +209,35 @@ export const Navbar = ({ disabled = false }) => {
               label={item.label}
               position="right"
               withArrow
+              offset={12}
+              withinPortal
+              zIndex={10000}
             >
-              <Box style={{ position: 'relative' }}>
-                <ActionIcon
-                  radius="xl"
-                  size={46}
+              <Box
+                style={{
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Box
                   onClick={!disabled ? item.action : undefined}
+                  onMouseEnter={() => setHovered(item.label)}
+                  onMouseLeave={() => setHovered(null)}
                   style={{
-                    background: isActive
-                      ? isDark
-                        ? theme.colors.purplelux[7]
-                        : theme.colors.purplelux[3]
-                      : 'transparent',
+                    ...navItemStyle,
+                    background:
+                      isActive || hovered === item.label
+                        ? activeBg
+                        : 'transparent',
                     color: iconColor,
-                    borderRadius: 14,
-                    transition: '0.15s ease',
                   }}
                 >
                   <item.icon size={26} stroke={1.7} />
-                </ActionIcon>
+                </Box>
 
-                {/* Unread notification badge */}
+                {/* NOTIFICATION BADGE */}
                 {item.label === 'Notifications' && unread > 0 && (
                   <Box
                     style={{
@@ -239,8 +252,8 @@ export const Navbar = ({ disabled = false }) => {
                       fontSize: 11,
                       fontWeight: 700,
                       display: 'flex',
-                      justifyContent: 'center',
                       alignItems: 'center',
+                      justifyContent: 'center',
                     }}
                   >
                     {unread}
@@ -252,19 +265,26 @@ export const Navbar = ({ disabled = false }) => {
         })}
       </Box>
 
-      {/* Logout (always active even if banned) */}
-      <Tooltip label="Logout" position="right">
-        <ActionIcon
-          radius="xl"
-          size={46}
-          onClick={logOut}
+      {/* LOGOUT */}
+      <Tooltip
+        label="Logout"
+        position="right"
+        withArrow
+        withinPortal
+        zIndex={10000}
+      >
+        <Box
+          onClick={async () => {
+            await logOut()
+            navigate(routes.login())
+          }}
           style={{
+            ...navItemStyle,
             color: iconColor,
-            pointerEvents: 'auto',
           }}
         >
           <IconLogout size={26} stroke={1.7} />
-        </ActionIcon>
+        </Box>
       </Tooltip>
     </Box>
   )

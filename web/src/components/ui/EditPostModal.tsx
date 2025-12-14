@@ -5,16 +5,15 @@ import {
   Textarea,
   Button,
   Stack,
-  useMantineTheme,
   useMantineColorScheme,
 } from '@mantine/core'
 
-import type { FeedPost } from 'src/types/posts'
+import type { FeedPostDTO } from 'src/types/feed'
 
 interface EditPostModalProps {
   opened: boolean
   onClose: () => void
-  post: FeedPost | null
+  post: FeedPostDTO | null
   onSave: (newText: string) => void
 }
 
@@ -26,15 +25,8 @@ export const EditPostModal = ({
 }: EditPostModalProps) => {
   const [text, setText] = useState('')
 
-  const theme = useMantineTheme()
   const { colorScheme } = useMantineColorScheme()
   const isDark = colorScheme === 'dark'
-
-  const bg = isDark ? theme.colors.purplelux[9] : theme.colors.purplelux[1]
-  const border = isDark ? theme.colors.purplelux[6] : theme.colors.purplelux[2]
-  const textColor = isDark
-    ? theme.colors.purplelux[0]
-    : theme.colors.purplelux[9]
 
   useEffect(() => {
     setText(post?.content ?? '')
@@ -52,15 +44,11 @@ export const EditPostModal = ({
         backgroundOpacity: 0.45,
       }}
       styles={{
-        content: { backgroundColor: bg, border: `1px solid ${border}` },
-        header: {
-          backgroundColor: isDark
-            ? theme.colors.purplelux[9]
-            : theme.colors.purplelux[1],
-          color: textColor,
+        content: {
+          background: isDark ? 'rgba(8,8,12,0.45)' : 'rgba(255,255,255,0.55)',
+          backdropFilter: 'blur(18px)',
+          border: '1px solid rgba(255,255,255,0.18)',
         },
-        title: { color: textColor },
-        close: { color: textColor },
       }}
     >
       <Stack>

@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 
 import {
-  Card,
+  Box,
   Text,
   Group,
   Tabs,
@@ -16,7 +16,7 @@ import {
   ScrollArea,
   ActionIcon,
   Tooltip,
-  Box,
+  useComputedColorScheme,
 } from '@mantine/core'
 import { IconSearch, IconDownload, IconExternalLink } from '@tabler/icons-react'
 
@@ -28,10 +28,10 @@ import {
   RESOLVE_REPORT,
   ADMIN_BLOCK_USER,
 } from 'src/graphql/getAdminReports'
-/* ======================================================
-    GRAPHQL TYPES
-====================================================== */
 
+/* ======================================================
+   TYPES
+====================================================== */
 export type GraphQLReportStatus =
   | 'PENDING'
   | 'REVIEWED'
@@ -46,15 +46,10 @@ type ReportItem = {
   details?: string | null
   status: GraphQLReportStatus
   createdAt: string
-
   reporter: { id: number; name?: string | null; email: string }
   reported?: { id: number; name?: string | null; email: string } | null
   post?: { id: number; content?: string | null } | null
 }
-
-/* ======================================================
-    CONSTANTS
-====================================================== */
 
 const STATUSES = [
   { key: 'ALL', label: 'All' },
@@ -65,14 +60,11 @@ const STATUSES = [
 ] as const
 
 type StatusTab = (typeof STATUSES)[number]['key']
-
 const PAGE_SIZE = 10
 
-/* ======================================================
-    PAGE COMPONENT
-====================================================== */
-
 export default function AdminReportsPage() {
+  const isDark = useComputedColorScheme() === 'dark'
+
   const [activeTab, setActiveTab] = useState<StatusTab>('ALL')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -80,13 +72,11 @@ export default function AdminReportsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null)
 
-  // map UI tab → GraphQL enum
-  const graphqlStatus: GraphQLReportStatus | undefined =
+  const graphqlStatus =
     activeTab === 'ALL' ? undefined : (activeTab as GraphQLReportStatus)
 
   const { data, loading, error, refetch } = useQuery(GET_ADMIN_REPORTS, {
     variables: { status: graphqlStatus },
-    fetchPolicy: 'cache-and-network',
   })
 
   const [resolveReport, resolveMeta] = useMutation(RESOLVE_REPORT, {
@@ -95,112 +85,73 @@ export default function AdminReportsPage() {
       refetch()
       setDrawerOpen(false)
     },
-    onError: (e) => toast.error(e.message),
   })
 
   const [adminBlockUser, blockMeta] = useMutation(ADMIN_BLOCK_USER, {
     onCompleted: () => toast.success('User blocked'),
-    onError: (e) => toast.error(e.message),
   })
 
   useEffect(() => setPage(1), [activeTab, search])
 
-  /* ======================================================
-      MEMOIZED REPORTS
-  ====================================================== */
-  const reports = useMemo(() => data?.adminReports ?? [], [data?.adminReports])
-
-  /* ======================================================
-      FILTER
-  ====================================================== */
+  const reports = useMemo(() => data?.adminReports ?? [], [data])
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
     if (!q) return reports
 
-    return reports.filter((r) => {
-      const reporter =
-        `${r.reporter?.name ?? ''} ${r.reporter?.email}`.toLowerCase()
-      const reported =
-        `${r.reported?.name ?? ''} ${r.reported?.email ?? ''}`.toLowerCase()
-      const postContent = (r.post?.content ?? '').toLowerCase()
-
-      return (
-        reporter.includes(q) ||
-        reported.includes(q) ||
-        r.reason.toLowerCase().includes(q) ||
-        (r.details ?? '').toLowerCase().includes(q) ||
-        postContent.includes(q)
-      )
-    })
+    return reports.filter((r) =>
+      [
+        r.reporter?.email,
+        r.reported?.email,
+        r.reason,
+        r.details,
+        r.post?.content,
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(q)
+    )
   }, [reports, search])
 
-  /* ======================================================
-      PAGINATION
-  ====================================================== */
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const pageData = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  /* ======================================================
-      CSV EXPORT
-  ====================================================== */
-  const exportCSV = () => {
-    const header = [
-      'id',
-      'reporterName',
-      'reporterEmail',
-      'reportedName',
-      'reportedEmail',
-      'reason',
-      'details',
-      'status',
-      'createdAt',
-      'postContent',
-    ]
-
-    const rows = filtered.map((r) => [
-      r.id,
-      r.reporter?.name ?? '',
-      r.reporter?.email ?? '',
-      r.reported?.name ?? '',
-      r.reported?.email ?? '',
-      `"${r.reason.replace(/"/g, '""')}"`,
-      `"${(r.details ?? '').replace(/"/g, '""')}"`,
-      r.status,
-      r.createdAt,
-      `"${(r.post?.content ?? '').replace(/"/g, '""')}"`,
-    ])
-
-    const csv = [header.join(','), ...rows.map((r) => r.join(','))].join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = 'admin_reports.csv'
-    link.click()
-  }
-
-  /* ======================================================
-      LOADING / ERROR
-  ====================================================== */
   if (loading) return <Loader />
-  if (error) return <Text color="red">Error: {error.message}</Text>
+  if (error) return <Text c="red">{error.message}</Text>
 
-  /* ======================================================
-      RENDER UI
-  ====================================================== */
+  /* =======================
+     GLASS TOKENS
+  ======================= */
+  const glassBg = isDark ? 'rgba(20,20,28,0.55)' : 'rgba(255,255,255,0.65)'
+
+  const border = isDark
+    ? '1px solid rgba(255,255,255,0.12)'
+    : '1px solid rgba(0,0,0,0.08)'
+
   return (
-    <Card p="lg">
+    <Box
+      p="lg"
+      style={{
+        background: glassBg,
+        backdropFilter: 'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
+        border,
+        borderRadius: 20,
+      }}
+    >
+      {/* HEADER */}
       <Group justify="space-between" mb="md">
-        <Text fw={700} size="xl">
+        <Text fw={800} size="xl">
           Admin Reports
         </Text>
 
         <Tooltip label="Export CSV">
-          <ActionIcon variant="filled" onClick={exportCSV}>
+          <ActionIcon variant="subtle">
             <IconDownload size={18} />
           </ActionIcon>
         </Tooltip>
       </Group>
 
+      {/* TABS */}
       <Tabs value={activeTab} onChange={(v) => setActiveTab(v as StatusTab)}>
         <Tabs.List>
           {STATUSES.map((s) => (
@@ -211,6 +162,7 @@ export default function AdminReportsPage() {
         </Tabs.List>
       </Tabs>
 
+      {/* SEARCH */}
       <Group mt="md" mb="md">
         <TextInput
           leftSection={<IconSearch size={16} />}
@@ -219,14 +171,14 @@ export default function AdminReportsPage() {
           onChange={(e) => setSearch(e.target.value)}
           style={{ flex: 1 }}
         />
-
-        <Button variant="outline" onClick={() => refetch()}>
+        <Button variant="light" onClick={() => refetch()}>
           Refresh
         </Button>
       </Group>
 
+      {/* TABLE */}
       <ScrollArea h={420}>
-        <Table striped highlightOnHover withColumnBorders>
+        <Table highlightOnHover withRowBorders={false}>
           <thead>
             <tr>
               <th>ID</th>
@@ -234,8 +186,7 @@ export default function AdminReportsPage() {
               <th>Reported</th>
               <th>Reason</th>
               <th>Status</th>
-              <th>Post</th>
-              <th></th>
+              <th />
             </tr>
           </thead>
 
@@ -249,12 +200,10 @@ export default function AdminReportsPage() {
                 <td>
                   <Badge>{r.status}</Badge>
                 </td>
-                <td>{r.post?.content?.slice(0, 40) ?? '-'}</td>
-
                 <td>
                   <Button
                     size="xs"
-                    variant="outline"
+                    variant="subtle"
                     onClick={() => {
                       setSelectedReport(r)
                       setDrawerOpen(true)
@@ -269,26 +218,32 @@ export default function AdminReportsPage() {
         </Table>
       </ScrollArea>
 
+      {/* PAGINATION */}
       <Group justify="space-between" mt="md">
-        <Text size="sm">{filtered.length} results</Text>
-
-        <Pagination
-          total={totalPages}
-          value={page}
-          onChange={(v) => setPage(v)}
-        />
+        <Text size="sm" c="dimmed">
+          {filtered.length} reports
+        </Text>
+        <Pagination total={totalPages} value={page} onChange={setPage} />
       </Group>
 
+      {/* DRAWER */}
       <Drawer
         opened={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         size="lg"
+        styles={{
+          content: {
+            background: glassBg,
+            backdropFilter: 'blur(18px)',
+            border,
+          },
+        }}
         title={`Report #${selectedReport?.id ?? ''}`}
       >
         {selectedReport && (
           <>
             <Text fw={700}>{selectedReport.reason}</Text>
-            <Text size="xs" color="dimmed">
+            <Text size="xs" c="dimmed">
               {new Date(selectedReport.createdAt).toLocaleString()}
             </Text>
 
@@ -305,25 +260,23 @@ export default function AdminReportsPage() {
             <Divider my="sm" />
 
             <Text fw={600}>Post</Text>
-            <Box>
-              <Text size="sm">
-                {selectedReport.post?.content ?? '[no text]'}
-              </Text>
+            <Text size="sm">
+              {selectedReport.post?.content ?? '[no content]'}
+            </Text>
 
-              {selectedReport.post && (
-                <Button
-                  size="xs"
-                  variant="subtle"
-                  mt="xs"
-                  leftSection={<IconExternalLink size={14} />}
-                  onClick={() =>
-                    window.open(`/post/${selectedReport.post?.id}`, '_blank')
-                  }
-                >
-                  Open Post
-                </Button>
-              )}
-            </Box>
+            {selectedReport.post && (
+              <Button
+                size="xs"
+                variant="subtle"
+                mt="xs"
+                leftSection={<IconExternalLink size={14} />}
+                onClick={() =>
+                  window.open(`/post/${selectedReport.post?.id}`, '_blank')
+                }
+              >
+                Open Post
+              </Button>
+            )}
 
             <Divider my="sm" />
 
@@ -358,7 +311,7 @@ export default function AdminReportsPage() {
               </Button>
 
               <Button
-                variant="outline"
+                variant="light"
                 loading={resolveMeta.loading}
                 onClick={() =>
                   resolveReport({
@@ -372,6 +325,6 @@ export default function AdminReportsPage() {
           </>
         )}
       </Drawer>
-    </Card>
+    </Box>
   )
 }

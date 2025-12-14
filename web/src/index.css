@@ -17,36 +17,50 @@
   }
 }
 
-/* ===============================================
-   GLOBAL BACKGROUND GRADIENT (Purplelux)
-================================================ */
-body {
-  transition: background 0.3s ease;
+/* ===============================
+   EFVN GLASS BACKGROUND
+================================ */
+.efvn-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+
+  filter: blur(120px);
+  transform: scale(1.2);
 }
 
-/* Light mode */
-[data-mantine-color-scheme="light"] body {
-  background: linear-gradient(
-    135deg,
-    var(--mantine-color-purplelux-2),
-    var(--mantine-color-purplelux-3),
-    var(--mantine-color-purplelux-4)
-  );
-  background-size: cover;
-  background-attachment: fixed;
+  [data-mantine-color-scheme="dark"] .efvn-bg {
+  background:
+    radial-gradient(at 15% 20%, rgba(255, 119, 148, 0.35), transparent 60%),
+    radial-gradient(at 85% 25%, rgba(117, 166, 218, 0.35), transparent 60%),
+    radial-gradient(at 70% 80%, rgba(117, 38, 243, 0.35), transparent 65%),
+    radial-gradient(at 30% 75%, rgba(255, 155, 62, 0.25), transparent 60%),
+    radial-gradient(at 50% 50%, rgba(49, 255, 159, 0.22), transparent 65%),
+    radial-gradient(at 90% 90%, rgba(255, 100, 180, 0.25), transparent 70%),
+    linear-gradient(
+      180deg,
+      #0c0d10 0%,
+      #121318 100%
+    );
 }
 
-/* Dark mode */
-[data-mantine-color-scheme="dark"] body {
-  background: linear-gradient(
-    135deg,
-    var(--mantine-color-purplelux-8),
-    var(--mantine-color-purplelux-9),
-    var(--mantine-color-purplelux-9)
-  );
-  background-size: cover;
-  background-attachment: fixed;
+[data-mantine-color-scheme="light"] .efvn-bg {
+  background:
+    radial-gradient(at 15% 20%, rgba(255, 18, 74, 0.45), transparent 60%),
+    radial-gradient(at 85% 25%, rgba(23, 131, 254, 0.45), transparent 60%),
+    radial-gradient(at 70% 80%, rgba(104, 22, 255, 0.45), transparent 65%),
+    radial-gradient(at 30% 75%, rgba(247, 146, 22, 0.35), transparent 60%),
+    radial-gradient(at 50% 50%, rgba(17, 255, 148, 0.35), transparent 65%),
+    radial-gradient(at 90% 90%, rgba(255, 20, 130, 0.35), transparent 70%),
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,0.85),
+      rgba(255,255,255,0.9)
+    );
 }
+
+
 
 /* Placeholder color overrides */
 [data-mantine-color-scheme="dark"] .textarea-input::placeholder {
@@ -81,7 +95,7 @@ body {
 
 }
 
-/* DARK MODE */
+/* DARK MODE
 [data-mantine-color-scheme="dark"] .efvn-tooltip {
   background-color: rgba(255,255,255,0.08) !important;
   color: var(--mantine-color-purplelux-1) !important;
@@ -89,4 +103,4 @@ body {
 }
 [data-mantine-color-scheme="dark"] .efvn-tooltip-arrow {
   --tooltip-bg: rgba(255,255,255,0.08);
-}
+} */

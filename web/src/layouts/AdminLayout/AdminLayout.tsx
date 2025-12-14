@@ -6,35 +6,31 @@ import { useAuth } from 'src/auth'
 
 export default function AdminLayout({ children }) {
   const { currentUser } = useAuth()
-
-  // BYPASS ROLE
-  const isDevAdminBypass = process.env.NODE_ENV === 'development'
-
-  if (!isDevAdminBypass && currentUser?.role !== 'admin') {
-    return <div>Akses ditolak</div>
-  }
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const { colorScheme, setColorScheme } = useMantineColorScheme()
+  const { colorScheme, toggleColorScheme } = useMantineColorScheme()
   const dark = colorScheme === 'dark'
+
+  if (currentUser?.role !== 'admin') {
+    return <Text ta="center">Access Denied</Text>
+  }
 
   return (
     <AppShell header={{ height: 60 }} padding="md">
       <AppShell.Header
         style={{
-          background: dark
-            ? 'var(--mantine-color-purplelux-9)'
-            : 'var(--mantine-color-purplelux-1)',
-          borderBottom: `1px solid var(--mantine-color-purplelux-4)`,
+          background: dark ? 'rgba(20,20,28,0.55)' : 'rgba(255,255,255,0.65)',
+
+          backdropFilter: 'blur(18px)',
+          WebkitBackdropFilter: 'blur(18px)',
+
+          borderBottom: dark
+            ? '1px solid rgba(255,255,255,0.08)'
+            : '1px solid rgba(0,0,0,0.08)',
         }}
       >
         <Group h="100%" px="md" justify="space-between">
           <Text fw={700}>Admin Panel</Text>
 
-          <ActionIcon
-            variant="default"
-            onClick={() => setColorScheme(dark ? 'light' : 'dark')}
-          >
+          <ActionIcon variant="subtle" onClick={toggleColorScheme}>
             {dark ? <IconSun size={20} /> : <IconMoon size={20} />}
           </ActionIcon>
         </Group>

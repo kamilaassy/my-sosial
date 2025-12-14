@@ -8,18 +8,20 @@ import { useMutation } from '@redwoodjs/web'
 import { toast } from '@redwoodjs/web/toast'
 
 import { useAuth } from 'src/auth'
-import CreatePostForm from 'src/components/CreatePostForm/CreatePostForm'
-import EditPostModal from 'src/components/EditPostModal'
+import CreatePostTrigger from 'src/components/PostComposer/CreatePostTrigger'
+import { usePostComposer } from 'src/components/PostComposer/PostComposerContext'
 import PostModal from 'src/components/PostModal/PostModal'
+import { EditPostModal } from 'src/components/ui/EditPostModal'
 import { FeedCard } from 'src/components/ui/FeedCard'
 import { FeedSkeleton } from 'src/components/ui/FeedSkeleton'
 import { PageContainer } from 'src/components/ui/PageContainer'
 import { UPDATE_POST_MUTATION } from 'src/graphql/updatePost'
 import { usePostsFeed } from 'src/hooks/usePostsFeed'
-import type { FeedPost } from 'src/types/posts'
+import type { FeedPostDTO } from 'src/types/feed'
 
 export default function Feed() {
   const { currentUser, isAuthenticated, loading: authLoading } = useAuth()
+  const { open: openComposer } = usePostComposer()
 
   const {
     posts,
@@ -28,33 +30,27 @@ export default function Feed() {
     setOpenedPostId,
     loading,
     isFetchingMore,
-    refetch,
     deletePost,
     togglePostLike,
+    refreshPosts, // 🔥 penting
   } = usePostsFeed()
 
-  // EDIT POST STATE
   const [editOpened, setEditOpened] = useState(false)
-  const [editPostData, setEditPostData] = useState<FeedPost | null>(null)
+  const [editPostData, setEditPostData] = useState<FeedPostDTO | null>(null)
 
-  // UPDATE POST MUTATION
   const [updatePost] = useMutation(UPDATE_POST_MUTATION, {
-    onCompleted: () => toast.success('Post updated!'),
     onError: (err) => toast.error(err.message),
   })
 
-  /* ----------------------------------------------
-   * REDIRECT — harus melalui useEffect!
-   * ---------------------------------------------- */
+  /* ======================================================
+     REDIRECT IF NOT LOGGED IN
+  ====================================================== */
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       navigate(routes.login())
     }
   }, [authLoading, isAuthenticated])
 
-  /* ----------------------------------------------
-   * AUTH LOADING SCREEN
-   * ---------------------------------------------- */
   if (authLoading) {
     return (
       <Center h="100vh">
@@ -63,17 +59,21 @@ export default function Feed() {
     )
   }
 
-  /* ----------------------------------------------
-   * Jika belum authenticated → tunggu redirect
-   * ---------------------------------------------- */
   if (!isAuthenticated) return null
 
   return (
     <PageContainer>
       {/* CREATE POST */}
-      <CreatePostForm onSuccess={() => refetch()} />
+      <CreatePostTrigger
+        onClick={() =>
+          openComposer((newPost) => {
+            // ⬅️ instant optimistic insert
+            setPosts((prev) => [newPost, ...prev])
+          })
+        }
+      />
 
-      {/* INITIAL LOADING */}
+      {/* FIRST LOAD SKELETON */}
       {loading && posts.length === 0 && (
         <>
           <FeedSkeleton />
@@ -82,18 +82,16 @@ export default function Feed() {
         </>
       )}
 
-      {/* POSTS LIST */}
+      {/* POSTS */}
       {posts.map((post) => {
         const likes = post.postLikes.length
-        const isLiked = post.postLikes.some(
-          (l) => l?.userId === currentUser?.id
-        )
+        const isLiked = post.postLikes.some((l) => l.userId === currentUser?.id)
 
         return (
           <FeedCard
             key={post.id}
             userId={post.user.id}
-            username={post.user.name || post.user.email}
+            username={post.user.email}
             avatarUrl={post.user.avatarUrl || undefined}
             content={post.content || ''}
             imageUrl={post.imageUrl || undefined}
@@ -101,17 +99,20 @@ export default function Feed() {
             likes={likes}
             isLiked={isLiked}
             comments={post.comments.length}
-            onLike={() =>
-              togglePostLike({
-                variables: { postId: post.id },
-              })
-            }
-            onComment={() => setOpenedPostId(post.id)}
             isOwner={post.user.id === currentUser?.id}
+            /* ================= LIKE ================= */
+            onLike={async () => {
+              await togglePostLike({ variables: { postId: post.id } })
+              refreshPosts()
+            }}
+            /* ================= COMMENT ================= */
+            onComment={() => setOpenedPostId(post.id)}
+            /* ================= EDIT ================= */
             onEdit={() => {
               setEditPostData(post)
               setEditOpened(true)
             }}
+            /* ================= DELETE ================= */
             onDelete={() =>
               openConfirmModal({
                 title: 'Delete Post',
@@ -119,9 +120,9 @@ export default function Feed() {
                 labels: { confirm: 'Delete', cancel: 'Cancel' },
                 confirmProps: { color: 'red' },
                 overlayProps: { blur: 4, backgroundOpacity: 0.55 },
-                onConfirm: () => deletePost({ variables: { id: post.id } }),
-                classNames: {
-                  root: 'confirm-delete-modal',
+                onConfirm: async () => {
+                  await deletePost({ variables: { id: post.id } })
+                  refreshPosts()
                 },
               })
             }
@@ -129,21 +130,24 @@ export default function Feed() {
         )
       })}
 
-      {/* INFINITE SCROLL LOADER */}
+      {/* INFINITE SCROLL LOADING */}
       {isFetchingMore && (
         <Center my="lg">
           <Loader size="sm" />
         </Center>
       )}
 
-      {/* POST MODAL */}
+      {/* POST DETAIL MODAL */}
       <PostModal
         postId={openedPostId}
         opened={!!openedPostId}
-        onClose={() => setOpenedPostId(null)}
+        onClose={() => {
+          setOpenedPostId(null)
+          refreshPosts()
+        }}
       />
 
-      {/* EDIT POST MODAL */}
+      {/* EDIT MODAL */}
       <EditPostModal
         opened={editOpened}
         post={editPostData}
@@ -156,15 +160,12 @@ export default function Feed() {
               id: editPostData.id,
               input: { content: newText },
             },
+            onCompleted: () => {
+              refreshPosts()
+              setEditOpened(false)
+              toast.success('Post updated!')
+            },
           })
-
-          // Update local state
-          setPosts((prev) =>
-            prev.map((p) =>
-              p.id === editPostData.id ? { ...p, content: newText } : p
-            )
-          )
-          setEditOpened(false)
         }}
       />
     </PageContainer>

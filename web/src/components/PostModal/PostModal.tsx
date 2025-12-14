@@ -18,6 +18,7 @@ import { useQuery, useMutation } from '@redwoodjs/web'
 import { useAuth } from 'src/auth'
 import CommentForm from 'src/components/PostModal/CommentForm'
 import CommentList from 'src/components/PostModal/CommentList'
+import { GlassCard } from 'src/components/ui/GlassCard'
 import { GET_POST } from 'src/graphql/post'
 import { TOGGLE_POST_LIKE } from 'src/graphql/togglePostLike'
 import type { DetailedPost } from 'src/types/posts'
@@ -27,7 +28,7 @@ export default function PostModal({ postId, opened, onClose }) {
   const { colorScheme } = useMantineColorScheme()
   const isDark = colorScheme === 'dark'
   const { currentUser } = useAuth()
-  const scrollRef = React.useRef(null)
+  const scrollRef = React.useRef<HTMLDivElement>(null)
 
   const { data, loading, refetch } = useQuery(GET_POST, {
     variables: { id: postId },
@@ -40,63 +41,85 @@ export default function PostModal({ postId, opened, onClose }) {
   })
 
   if (!opened) return null
-
   const post: DetailedPost | undefined = data?.post
+
+  /* ===================== TOKENS ===================== */
+  const glassBg = isDark
+    ? 'rgba(34, 34, 34, 0.81)'
+    : 'rgba(233, 221, 221, 0.82)'
+
+  const glassSoft = isDark
+    ? 'rgba(34, 34, 34, 0.81)'
+    : 'rgba(233, 221, 221, 0.82)'
+  const textMain = isDark
+    ? theme.colors.purplelux[0]
+    : theme.colors.purplelux[9]
+
+  const textSubtle = isDark
+    ? 'rgba(255,255,255,0.6)'
+    : theme.colors.purplelux[9]
+  /* ================================================== */
 
   return (
     <Modal
       opened={opened}
       onClose={onClose}
-      fullScreen={false}
       centered
       withCloseButton={false}
-      overlayProps={{
-        blur: 6,
-        backgroundOpacity: 0.45,
-      }}
+      overlayProps={{ blur: 8, backgroundOpacity: 0.55 }}
       styles={{
         content: {
-          borderRadius: 20,
-          backgroundColor: isDark
-            ? theme.colors.purplelux[9]
-            : theme.colors.purplelux[0],
+          background: 'transparent',
+          border: 'none',
+          boxShadow: 'none',
           padding: 0,
-          maxWidth: 650,
-          width: '100%',
+          maxWidth: 700,
         },
       }}
     >
-      {/* CLOSE BUTTON */}
+      {/* CLOSE */}
       <ActionIcon
         onClick={onClose}
         radius="xl"
         size={36}
-        variant="light"
+        variant="transparent"
         style={{
           position: 'absolute',
-          right: 15,
-          top: 15,
-          backgroundColor: isDark
-            ? theme.colors.purplelux[7]
-            : theme.colors.purplelux[2],
+          right: 28,
+          top: 28,
+          zIndex: 10,
+          background: glassSoft,
+          backdropFilter: 'blur(12px)',
         }}
       >
-        <IconX size={20} />
+        <IconX size={18} />
       </ActionIcon>
 
-      {/* WRAPPER UTAMA */}
-      <Box style={{ display: 'flex', flexDirection: 'column', height: '80vh' }}>
-        {/* SCROLL AREA */}
+      <GlassCard
+        radius={26}
+        padding={0}
+        style={{
+          background: glassBg,
+          border: isDark
+            ? '1px solid rgba(255,255,255,0.12)'
+            : '1px solid rgba(0,0,0,0.12)',
+          overflow: 'hidden',
+          height: '80vh',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {/* SCROLL */}
         <Box
           ref={scrollRef}
           style={{
-            padding: 20,
+            padding: 22,
             overflowY: 'auto',
             flex: 1,
           }}
         >
           {loading && (
-            <Group justify="center" mt={40} mb={40}>
+            <Group justify="center" mt={40}>
               <Loader size="lg" />
             </Group>
           )}
@@ -104,18 +127,17 @@ export default function PostModal({ postId, opened, onClose }) {
           {post && (
             <>
               {/* HEADER */}
-              <Group mb={14}>
+              <Group mb={18}>
                 <Avatar
                   src={post.user.avatarUrl || undefined}
                   radius="xl"
                   size={48}
                 />
-
                 <Box>
-                  <Text fw={600} size="sm">
+                  <Text fw={700} size="sm" c={textMain}>
                     {post.user.name || post.user.email}
                   </Text>
-                  <Text size="xs" c="dimmed">
+                  <Text size="xs" c={textSubtle}>
                     {new Date(post.createdAt).toLocaleString()}
                   </Text>
                 </Box>
@@ -123,73 +145,67 @@ export default function PostModal({ postId, opened, onClose }) {
 
               {/* IMAGE */}
               {post.imageUrl && (
-                <Box
-                  style={{
-                    marginBottom: 12,
-                    borderRadius: 12,
-                    overflow: 'hidden',
-                  }}
-                >
+                <Box mb={16} style={{ borderRadius: 18, overflow: 'hidden' }}>
                   <img
                     src={post.imageUrl}
-                    alt="post"
-                    style={{
-                      width: '100%',
-                      display: 'block',
-                    }}
+                    alt=""
+                    style={{ width: '100%', display: 'block' }}
                   />
                 </Box>
               )}
 
               {/* CONTENT */}
-              <Text mb={12} style={{ whiteSpace: 'pre-wrap' }}>
+              <Text mb={16} c={textMain} style={{ whiteSpace: 'pre-wrap' }}>
                 {post.content}
               </Text>
 
               {/* ACTIONS */}
-              <Group gap={18} mb={12}>
+              <Group gap={16} mb={12}>
                 <ActionIcon
-                  size={34}
-                  radius="xl"
+                  variant="transparent"
                   onClick={() => toggleLike({ variables: { postId: post.id } })}
                   style={{
-                    background: 'transparent',
-                    color: post.postLikes.some(
-                      (l) => l.userId === currentUser?.id
-                    )
-                      ? theme.colors.red[6]
-                      : isDark
-                        ? theme.colors.purplelux[1]
-                        : theme.colors.purplelux[9],
+                    transition: 'transform 0.15s ease',
                   }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.transform = 'scale(1.15)')
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.transform = 'scale(1)')
+                  }
                 >
                   <IconHeart
-                    size={22}
+                    size={20}
                     fill={
                       post.postLikes.some((l) => l.userId === currentUser?.id)
-                        ? theme.colors.red[6]
+                        ? '#ff4d4f'
                         : 'none'
                     }
-                    stroke={1.8}
+                    color={
+                      post.postLikes.some((l) => l.userId === currentUser?.id)
+                        ? '#ff4d4f'
+                        : textMain
+                    }
                   />
                 </ActionIcon>
 
                 <ActionIcon
-                  size={34}
-                  radius="xl"
+                  variant="transparent"
                   style={{
-                    background: 'transparent',
-                    color: isDark
-                      ? theme.colors.purplelux[1]
-                      : theme.colors.purplelux[9],
+                    transition: 'transform 0.15s ease',
                   }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.transform = 'scale(1.15)')
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.transform = 'scale(1)')
+                  }
                 >
-                  <IconMessageCircle size={22} stroke={1.8} />
+                  <IconMessageCircle size={20} />
                 </ActionIcon>
               </Group>
 
-              {/* LIKE COUNT */}
-              <Text size="sm" fw={600} mb={10}>
+              <Text size="sm" fw={600} mb={16} c={textSubtle}>
                 {post.postLikes.length} likes
               </Text>
 
@@ -203,33 +219,30 @@ export default function PostModal({ postId, opened, onClose }) {
           )}
         </Box>
 
-        {/* STICKY COMMENT FORM */}
+        {/* COMMENT INPUT */}
         <Box
           style={{
             padding: 16,
-            borderTop: `1px solid ${
-              isDark ? theme.colors.purplelux[7] : theme.colors.gray[3]
-            }`,
-            backgroundColor: isDark
-              ? theme.colors.purplelux[9]
-              : theme.colors.purplelux[0],
+            background: glassSoft,
+            backdropFilter: 'blur(14px)',
+            borderTop: isDark
+              ? '1px solid rgba(255,255,255,0.08)'
+              : '1px solid rgba(0,0,0,0.08)',
           }}
         >
           <CommentForm
             postId={post?.id}
             onSuccess={() => {
               refetch().then(() => {
-                if (scrollRef.current) {
-                  scrollRef.current.scrollTo({
-                    top: scrollRef.current.scrollHeight,
-                    behavior: 'smooth',
-                  })
-                }
+                scrollRef.current?.scrollTo({
+                  top: scrollRef.current.scrollHeight,
+                  behavior: 'smooth',
+                })
               })
             }}
           />
         </Box>
-      </Box>
+      </GlassCard>
     </Modal>
   )
 }

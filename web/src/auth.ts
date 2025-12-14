@@ -1,4 +1,4 @@
-import { createDbAuthClient, createAuth } from '@redwoodjs/auth-dbAuth-web'
+import { createDbAuthClient, createAuth } from '@redwoodjs/auth-dbauth-web'
 
 const dbAuthClient = createDbAuthClient({
   fetchConfig: {

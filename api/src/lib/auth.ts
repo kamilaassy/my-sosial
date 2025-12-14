@@ -5,28 +5,24 @@ import { db } from './db'
 
 export const cookieName = 'session_%port%'
 
+// Redwood receives { username, password } instead of { email, password }
 export const getCurrentUser = async (session: Decoded) => {
   if (!session || !session.id) {
     throw new Error('Invalid session')
   }
 
-  const userId = Number(session.id)
-
   const user = await db.user.findUnique({
-    where: { id: userId },
+    where: { id: Number(session.id) },
     select: {
       id: true,
-      email: true,
+      email: true, // <-- ini isinya username kamu
+      name: true,
       role: true,
       isBanned: true,
     },
   })
 
-  if (!user) {
-    throw new Error('User not found')
-  }
-
-  console.log('FOUND USER:', user)
+  if (!user) throw new Error('User not found')
 
   return user
 }
@@ -35,9 +31,7 @@ export const isAuthenticated = (): boolean => {
   return !!context.currentUser
 }
 
-type AllowedRoles = string | string[] | undefined
-
-export const hasRole = (roles: AllowedRoles): boolean => {
+export const hasRole = (roles?: string | string[]): boolean => {
   if (!isAuthenticated()) return false
 
   const role = context.currentUser?.role
@@ -49,12 +43,11 @@ export const hasRole = (roles: AllowedRoles): boolean => {
   return false
 }
 
-export const requireAuth = ({ roles }: { roles?: AllowedRoles } = {}) => {
+export const requireAuth = ({ roles }: { roles?: string | string[] } = {}) => {
   if (!isAuthenticated()) {
     throw new AuthenticationError("You don't have permission to do that.")
   }
 
-  // BAN CHECK di sini → semua aksi otomatis terblokir
   if (context.currentUser?.isBanned) {
     throw new ForbiddenError('Your account is banned.')
   }

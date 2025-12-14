@@ -1,5 +1,4 @@
 import {
-  Card,
   Group,
   Text,
   ActionIcon,
@@ -12,13 +11,16 @@ import {
 import {
   IconDots,
   IconHeart,
-  IconMessage,
+  IconMessageCircle,
   IconPencil,
   IconTrash,
 } from '@tabler/icons-react'
 import { formatDistanceToNow } from 'date-fns'
 
 import { navigate, routes } from '@redwoodjs/router'
+
+import { GlassCard } from 'src/components/ui/GlassCard'
+import { getLowResPlaceholder } from 'src/lib/image'
 
 export const FeedCard = ({
   userId,
@@ -35,135 +37,95 @@ export const FeedCard = ({
   onEdit,
   onDelete,
   isOwner,
-  mb = 16,
+  mb = 20,
 }) => {
   const theme = useMantineTheme()
   const { colorScheme } = useMantineColorScheme()
   const isDark = colorScheme === 'dark'
 
-  // CARD LOOK
-  const cardBg = isDark ? theme.colors.purplelux[9] : theme.colors.purplelux[0]
-  const border = isDark ? theme.colors.purplelux[7] : theme.colors.purplelux[2]
-  const softBg = isDark ? theme.colors.purplelux[7] : theme.colors.purplelux[1]
-
-  const textColor = isDark
+  const textMain = isDark
     ? theme.colors.purplelux[0]
     : theme.colors.purplelux[9]
 
-  const subtleText = isDark ? 'purplelux.2' : 'purplelux.6'
+  const textSubtle = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)'
+
+  const glassSoft = isDark ? 'rgba(8,8,12,0.32)' : 'rgba(255,255,255,0.18)'
 
   return (
-    <Card
-      radius="lg"
-      shadow="md"
-      p="lg"
-      withBorder
-      mb={mb}
-      style={{
-        backgroundColor: cardBg,
-        border: `1px solid ${border}`,
-        backdropFilter: 'blur(6px)',
-      }}
-    >
+    <GlassCard mb={mb}>
       {/* HEADER */}
-      <Group justify="space-between" mb="sm">
+      <Group justify="space-between" align="flex-start" mb="sm">
         <Group>
-          {/* AVATAR */}
           <Box
             onClick={() => navigate(routes.profile({ id: userId }))}
             style={{
-              width: 42,
-              height: 42,
+              width: 44,
+              height: 44,
               borderRadius: '50%',
               overflow: 'hidden',
               cursor: 'pointer',
-              backgroundColor: softBg,
+              background: glassSoft,
+              backdropFilter: 'blur(10px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 700,
+              color: theme.colors.purplelux[6],
             }}
           >
-            {avatarUrl && (
+            {avatarUrl ? (
               <img
                 src={avatarUrl}
                 alt=""
+                loading="lazy"
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
+            ) : (
+              username?.[0]?.toUpperCase()
             )}
           </Box>
 
-          {/* USERNAME + TIME */}
-          <div>
-            <Text fw={700} c={textColor} style={{ cursor: 'pointer' }}>
+          <Box>
+            <Text
+              fw={700}
+              c={textMain}
+              style={{ cursor: 'pointer' }}
+              onClick={() => navigate(routes.profile({ id: userId }))}
+            >
               {username}
             </Text>
 
-            <Text size="xs" c={subtleText}>
+            <Text size="xs" c={textSubtle}>
               {formatDistanceToNow(new Date(createdAt), { addSuffix: true })}
             </Text>
-          </div>
+          </Box>
         </Group>
 
-        {/* MENU */}
         {isOwner && (
-          <Menu
-            shadow="md"
-            width={150}
-            styles={{
-              dropdown: {
-                backgroundColor: cardBg,
-                border: `1px solid ${border}`,
-              },
-              item: {
-                color: textColor,
-                '&[data-hovered]': {
-                  backgroundColor: softBg,
-                },
-              },
-            }}
-          >
+          <Menu withinPortal width={160}>
             <Menu.Target>
               <ActionIcon
                 radius="xl"
                 size="lg"
-                variant="filled"
                 style={{
-                  backgroundColor: softBg,
+                  background: glassSoft,
+                  backdropFilter: 'blur(12px)',
                 }}
               >
-                <IconDots
-                  size={20}
-                  color={
-                    isDark
-                      ? theme.colors.purplelux[1]
-                      : theme.colors.purplelux[7]
-                  }
-                />
+                <IconDots size={18} />
               </ActionIcon>
             </Menu.Target>
 
-            <Menu.Dropdown
-              style={{
-                backgroundColor: isDark
-                  ? theme.colors.purplelux[9]
-                  : theme.colors.purplelux[1],
-                border: `1px solid ${
-                  isDark ? theme.colors.purplelux[7] : theme.colors.purplelux[2]
-                }`,
-              }}
-            >
+            <Menu.Dropdown>
               <Menu.Item
                 leftSection={<IconPencil size={16} />}
-                style={{
-                  color: textColor,
-                }}
                 onClick={onEdit}
               >
                 Edit
               </Menu.Item>
-
               <Menu.Item
                 leftSection={<IconTrash size={16} />}
-                style={{
-                  color: isDark ? theme.colors.red[4] : theme.colors.red[7],
-                }}
+                color="red"
                 onClick={() => onDelete?.()}
               >
                 Delete
@@ -174,69 +136,82 @@ export const FeedCard = ({
       </Group>
 
       {/* CONTENT */}
-      <Text
-        mb="sm"
-        c={textColor}
-        style={{
-          lineHeight: 1.55,
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-        }}
-      >
-        {content}
-      </Text>
+      {content && (
+        <Text
+          mb="sm"
+          c={textMain}
+          style={{ lineHeight: 1.6, whiteSpace: 'pre-wrap' }}
+        >
+          {content}
+        </Text>
+      )}
 
       {/* IMAGE */}
       {imageUrl && (
-        <Card.Section mb="sm">
-          <Image src={imageUrl} radius="md" />
-        </Card.Section>
+        <Box
+          mt="sm"
+          style={{
+            borderRadius: 16,
+            overflow: 'hidden',
+            backgroundImage: `url(${getLowResPlaceholder(imageUrl)})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        >
+          <Image src={imageUrl} loading="lazy" fit="cover" />
+        </Box>
       )}
 
       {/* ACTIONS */}
-      <Group gap="md" mt="xs">
-        {/* LIKE */}
-        <Group gap={4}>
+      <Group gap="lg" mt="md">
+        <Group gap={6}>
           <ActionIcon
-            radius="xl"
-            size="lg"
-            variant="filled"
+            variant="transparent"
             onClick={onLike}
             style={{
-              backgroundColor: isLiked ? theme.colors.purplelux[6] : softBg,
+              transition: 'transform 0.15s ease, opacity 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.15)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)'
             }}
           >
             <IconHeart
               size={18}
-              color={isLiked ? 'white' : theme.colors.purplelux[9]}
-              fill={isLiked ? 'white' : 'none'}
+              fill={isLiked ? '#ff4d4f' : 'none'}
+              color={isLiked ? '#ff4d4f' : 'currentColor'}
             />
           </ActionIcon>
 
-          <Text size="sm" c={subtleText}>
+          <Text size="sm" c={textSubtle}>
             {likes}
           </Text>
         </Group>
 
-        {/* COMMENTS */}
-        <Group gap={4}>
+        <Group gap={6}>
           <ActionIcon
-            radius="xl"
-            size="lg"
-            variant="filled"
+            variant="transparent"
             onClick={onComment}
             style={{
-              backgroundColor: softBg,
+              transition: 'transform 0.15s ease, opacity 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.15)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)'
             }}
           >
-            <IconMessage size={18} color={theme.colors.purplelux[9]} />
+            <IconMessageCircle size={18} />
           </ActionIcon>
 
-          <Text size="sm" c={subtleText}>
+          <Text size="sm" c={textSubtle}>
             {comments}
           </Text>
         </Group>
       </Group>
-    </Card>
+    </GlassCard>
   )
 }

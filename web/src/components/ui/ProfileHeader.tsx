@@ -5,33 +5,65 @@ import {
   useComputedColorScheme,
 } from '@mantine/core'
 
-import { Card } from './Card'
+import { GlassCard } from './GlassCard'
 import { UserAvatar } from './UserAvatar'
 
-export const ProfileHeader = ({ name, bio, mb = 0, rightSection = null }) => {
+type ProfileHeaderProps = {
+  username: string
+  name?: string | null
+  bio?: string | null
+  avatarUrl?: string | null
+  mb?: number
+  rightSection?: React.ReactNode
+}
+
+export const ProfileHeader = ({
+  username,
+  name,
+  bio,
+  avatarUrl,
+  mb = 0,
+  rightSection = null,
+}: ProfileHeaderProps) => {
   const theme = useMantineTheme()
-  const colorScheme = useComputedColorScheme()
-  const isDark = colorScheme === 'dark'
+  const isDark = useComputedColorScheme() === 'dark'
 
   return (
-    <Card p="lg" radius="lg" mb={mb} withBorder>
+    <GlassCard padding="lg" radius="lg" mb={mb}>
       <Group align="flex-start" justify="space-between">
-        {/* Left side: Avatar + name + bio */}
+        {/* LEFT: Avatar + text */}
         <Group align="center">
-          <UserAvatar name={name} size={70} />
+          <UserAvatar name={name || username} src={avatarUrl} size={70} />
 
           <div>
+            {/* Username (email) besar */}
             <Text
               fw={700}
+              fz={24}
               c={isDark ? theme.colors.purplelux[0] : theme.colors.purplelux[9]}
             >
-              {name}
+              {username}
             </Text>
 
+            {/* Name kecil */}
+            {name && (
+              <Text
+                size="sm"
+                fw={500}
+                c={
+                  isDark ? theme.colors.purplelux[2] : theme.colors.purplelux[6]
+                }
+                mt={2}
+              >
+                {name}
+              </Text>
+            )}
+
+            {/* Bio */}
             {bio && (
               <Text
                 size="sm"
-                mt={4}
+                mt={6}
                 c={
                   isDark ? theme.colors.purplelux[2] : theme.colors.purplelux[6]
                 }
@@ -42,9 +74,9 @@ export const ProfileHeader = ({ name, bio, mb = 0, rightSection = null }) => {
           </div>
         </Group>
 
-        {/* Right side: 3 dots menu */}
+        {/* RIGHT: More menu */}
         {rightSection && <div>{rightSection}</div>}
       </Group>
-    </Card>
+    </GlassCard>
   )
 }

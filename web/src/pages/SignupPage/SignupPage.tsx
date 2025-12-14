@@ -1,14 +1,14 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import {
-  Card,
-  Container,
   Stack,
   Title,
-  Divider,
-  useMantineTheme,
   Text,
+  Box,
+  ActionIcon,
+  useMantineTheme,
 } from '@mantine/core'
+import { IconEye, IconEyeOff } from '@tabler/icons-react'
 
 import {
   Form,
@@ -20,13 +20,21 @@ import {
 } from '@redwoodjs/forms'
 import { Link, navigate, routes } from '@redwoodjs/router'
 import { Metadata } from '@redwoodjs/web'
+import { useMutation } from '@redwoodjs/web'
 import { toast, Toaster } from '@redwoodjs/web/toast'
 
 import { useAuth } from 'src/auth'
+import { AuthCard } from 'src/components/ui/AuthCard'
+import { UPDATE_PROFILE } from 'src/graphql/editProfile'
 
-const SignupPage = () => {
+export default function SignupPage() {
   const { isAuthenticated, signUp } = useAuth()
   const theme = useMantineTheme()
+  const [updateProfile] = useMutation(UPDATE_PROFILE)
+
+  const [showPassword, setShowPassword] = useState(false)
+  const passwordRef = useRef<HTMLInputElement>(null)
+  const emailRef = useRef<HTMLInputElement>(null)
 
   const isDark =
     document.documentElement.getAttribute('data-mantine-color-scheme') ===
@@ -36,205 +44,155 @@ const SignupPage = () => {
     if (isAuthenticated) navigate(routes.home())
   }, [isAuthenticated])
 
-  // auto focus input
-  const usernameRef = useRef<HTMLInputElement>(null)
-  useEffect(() => usernameRef.current?.focus(), [])
+  useEffect(() => emailRef.current?.focus(), [])
 
-  const onSubmit = async (data: Record<string, string>) => {
-    const response = await signUp({
-      username: data.username,
+  const onSubmit = async (data: {
+    email?: string
+    name?: string
+    password?: string
+  }) => {
+    const res = await signUp({
+      username: data.email,
       password: data.password,
     })
 
-    if (response.message) toast(response.message)
-    else if (response.error) toast.error(response.error)
-    else toast.success('Welcome!') // signed in automatically
+    if (res.error) {
+      toast.error(res.error)
+      return
+    }
+
+    await updateProfile({
+      variables: { input: { name: data.name } },
+    })
+
+    toast.success('Welcome!')
+    navigate(routes.home())
   }
 
-  // === THEME TOKENS ===
-  const cardBg = isDark ? 'rgba(36,26,34,0.58)' : 'rgba(255,255,255,0.72)'
-  const borderCol = isDark
-    ? theme.colors.purplelux[7]
-    : theme.colors.purplelux[2]
-  const titleCol = isDark
+  const textMain = isDark
     ? theme.colors.purplelux[0]
     : theme.colors.purplelux[9]
-  const inputBg = isDark ? theme.colors.purplelux[8] : theme.colors.purplelux[0]
-  const inputBorder = isDark
-    ? theme.colors.purplelux[6]
-    : theme.colors.purplelux[3]
-  const labelCol = titleCol
-  const subtleGlow = isDark
-    ? '0 6px 30px rgba(36,26,34,0.35)'
-    : '0 6px 30px rgba(160,92,132,0.08)'
+
+  const textSubtle = isDark
+    ? theme.colors.purplelux[2]
+    : theme.colors.purplelux[6]
 
   return (
     <>
       <Metadata title="Signup" />
+      <Toaster />
 
-      <main
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Toaster toastOptions={{ className: 'rw-toast', duration: 6000 }} />
+      <main className="auth-center">
+        <AuthCard>
+          {/* HEADER — SAMA STRUKTUR */}
+          <Stack align="center" gap={4}>
+            <Title fw={700} c={textMain}>
+              Create account
+            </Title>
+            <Text size="sm" c={textSubtle}>
+              Please fill the form below
+            </Text>
+          </Stack>
 
-        <Container
-          size="lg"
-          style={{ display: 'flex', justifyContent: 'center' }}
-        >
-          <Card
-            p={28}
-            radius={14}
-            withBorder
-            shadow="md"
-            style={{
-              maxWidth: 520,
-              minWidth: 420,
-              width: '100%',
-              minHeight: 360,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              backdropFilter: 'blur(14px)',
-              backgroundColor: cardBg,
-              borderColor: borderCol,
-              boxShadow: subtleGlow,
-            }}
-          >
-            <Stack gap={20}>
-              <Title
-                ta="center"
-                fw={700}
-                style={{
-                  fontSize: 28,
-                  color: titleCol,
-                  marginBottom: 6,
-                }}
-              >
-                Create Account
-              </Title>
+          {/* FORM */}
+          <Form onSubmit={onSubmit}>
+            <Stack gap={16}>
+              {/* USERNAME */}
+              <Box>
+                <Label name="email">Username</Label>
+                <TextField
+                  name="email"
+                  ref={emailRef}
+                  validation={{ required: true }}
+                  className="rw-input"
+                />
+                <FieldError name="email" />
+              </Box>
 
-              <Form onSubmit={onSubmit}>
-                <Stack gap={16}>
-                  {/* USERNAME */}
-                  <div>
-                    <Label
-                      name="username"
-                      style={{
-                        color: labelCol,
-                        fontWeight: 600,
-                        fontSize: 14,
-                      }}
-                    >
-                      Username
-                    </Label>
+              {/* NAME */}
+              <Box>
+                <Label name="name">Name</Label>
+                <TextField
+                  name="name"
+                  validation={{ required: true }}
+                  className="rw-input"
+                />
+                <FieldError name="name" />
+              </Box>
 
-                    <TextField
-                      name="username"
-                      ref={usernameRef}
-                      className="rw-input"
-                      validation={{
-                        required: {
-                          value: true,
-                          message: 'Username is required',
-                        },
-                      }}
-                      style={{
-                        backgroundColor: inputBg,
-                        border: `1px solid ${inputBorder}`,
-                        padding: '8px 12px',
-                        height: 40,
-                        borderRadius: 8,
-                        marginTop: 8,
-                        width: '100%',
-                        boxSizing: 'border-box',
-                        color: labelCol,
-                      }}
-                    />
-                    <FieldError name="username" />
-                  </div>
+              {/* PASSWORD */}
+              <Box>
+                <Label name="password">Password</Label>
 
-                  {/* PASSWORD */}
-                  <div>
-                    <Label
-                      name="password"
-                      style={{
-                        color: labelCol,
-                        fontWeight: 600,
-                        fontSize: 14,
-                      }}
-                    >
-                      Password
-                    </Label>
-
-                    <PasswordField
-                      name="password"
-                      className="rw-input"
-                      autoComplete="new-password"
-                      validation={{
-                        required: {
-                          value: true,
-                          message: 'Password is required',
-                        },
-                      }}
-                      style={{
-                        backgroundColor: inputBg,
-                        border: `1px solid ${inputBorder}`,
-                        padding: '8px 12px',
-                        height: 40,
-                        borderRadius: 8,
-                        marginTop: 8,
-                        width: '100%',
-                        boxSizing: 'border-box',
-                        color: labelCol,
-                      }}
-                    />
-                    <FieldError name="password" />
-                  </div>
-
-                  {/* SIGN UP BUTTON */}
-                  <Submit
+                <Box style={{ position: 'relative' }}>
+                  <PasswordField
+                    name="password"
+                    ref={passwordRef}
+                    validation={{
+                      required: true,
+                      minLength: 8,
+                    }}
+                    className="rw-input"
                     style={{
                       width: '100%',
-                      height: 44,
-                      borderRadius: 8,
-                      marginTop: 6,
-                      fontWeight: 700,
-                      backgroundColor: theme.colors.purplelux[4],
-                      color: 'white',
+                      padding: '10px 44px 10px 12px',
+                      borderRadius: 10,
+                    }}
+                  />
+
+                  <ActionIcon
+                    variant="subtle"
+                    onClick={() => {
+                      if (!passwordRef.current) return
+                      passwordRef.current.type =
+                        passwordRef.current.type === 'password'
+                          ? 'text'
+                          : 'password'
+                      setShowPassword((v) => !v)
+                    }}
+                    style={{
+                      position: 'absolute',
+                      right: 8,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
                     }}
                   >
-                    SIGN UP
-                  </Submit>
-                </Stack>
-              </Form>
+                    {showPassword ? (
+                      <IconEyeOff size={18} />
+                    ) : (
+                      <IconEye size={18} />
+                    )}
+                  </ActionIcon>
+                </Box>
 
-              <Divider opacity={0.12} />
+                <FieldError name="password" />
+              </Box>
 
-              <Text
-                ta="center"
-                size="sm"
+              {/* SUBMIT */}
+              <Submit
                 style={{
-                  color: isDark
-                    ? theme.colors.purplelux[1]
-                    : theme.colors.purplelux[7],
+                  marginTop: 12,
+                  height: 46,
+                  borderRadius: 999,
+                  fontWeight: 700,
+                  background: theme.colors.purplelux[4],
+                  color: 'white',
                 }}
               >
-                Already have an account?{' '}
-                <Link to={routes.login()} style={{ fontWeight: 600 }}>
-                  Log in
-                </Link>
-              </Text>
+                Sign up
+              </Submit>
             </Stack>
-          </Card>
-        </Container>
+          </Form>
+
+          {/* FOOTER */}
+          <Text ta="center" size="sm" c={textSubtle}>
+            Already have an account?{' '}
+            <Link to={routes.login()} style={{ fontWeight: 600 }}>
+              Sign in
+            </Link>
+          </Text>
+        </AuthCard>
       </main>
     </>
   )
 }
-
-export default SignupPage

@@ -51,9 +51,16 @@ export const schema = gql`
     resetTokenExpiresAt: DateTime
   }
 
+  input UpdateProfileInput {
+    name: String
+    bio: String
+    avatarBase64: String
+  }
+
   type Mutation {
     createUser(input: CreateUserInput!): User! @requireAuth
     updateUser(id: Int!, input: UpdateUserInput!): User! @requireAuth
     deleteUser(id: Int!): User! @requireAuth
+    updateProfile(input: UpdateProfileInput!): User! @requireAuth
   }
 `

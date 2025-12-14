@@ -67,6 +67,7 @@ model Post {
   id        Int      @id @default(autoincrement())
   content   String?  @db.Text //Batas ± 65.535 karakter.
   imageUrl  String?
+  blurUrl   String?
   authorId  Int
   createdAt DateTime @default(now())
 

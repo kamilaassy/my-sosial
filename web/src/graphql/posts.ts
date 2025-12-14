@@ -1,7 +1,7 @@
 import gql from 'graphql-tag'
 
 export const GET_POSTS = gql`
-  query GetPosts($skip: Int, $take: Int) {
+  query GetPosts($skip: Int!, $take: Int!) {
     posts(skip: $skip, take: $take) {
       id
       content

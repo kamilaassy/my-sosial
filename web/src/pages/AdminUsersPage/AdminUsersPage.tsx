@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 
 import {
-  Card,
+  Box,
   Text,
   Group,
   TextInput,
@@ -14,18 +14,19 @@ import {
   ActionIcon,
   Tooltip,
   Modal,
+  useComputedColorScheme,
 } from '@mantine/core'
 import { IconSearch, IconUserSearch } from '@tabler/icons-react'
+import { gql } from 'graphql-tag'
 
 import { useQuery, useMutation } from '@redwoodjs/web'
 import { toast } from '@redwoodjs/web/toast'
 
 import AdminUserActivityModal from 'src/components/AdminUserActivityModal/AdminUserActivityModal'
 
-/* ======================================================
-    GRAPHQL QUERIES
-====================================================== */
-
+/* =======================
+   GRAPHQL
+======================= */
 const GET_USERS = gql`
   query AdminUsers {
     adminUsers {
@@ -57,10 +58,6 @@ const UNBAN_USER = gql`
   }
 `
 
-/* ======================================================
-    TYPES
-====================================================== */
-
 type AdminUser = {
   id: number
   name: string | null
@@ -70,20 +67,16 @@ type AdminUser = {
   createdAt: string
 }
 
-/* ======================================================
-    PAGE COMPONENT
-====================================================== */
-
 export default function AdminUsersPage() {
+  const isDark = useComputedColorScheme() === 'dark'
+
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
 
-  const { data, loading, error, refetch } = useQuery(GET_USERS, {
-    fetchPolicy: 'cache-and-network',
-  })
+  const { data, loading, error, refetch } = useQuery(GET_USERS)
 
   const [banUser] = useMutation(BAN_USER, {
     onCompleted: () => {
@@ -101,55 +94,57 @@ export default function AdminUsersPage() {
     onError: (e) => toast.error(e.message),
   })
 
-  /* ======================================================
-      USERS (MEMOIZED)
-  ====================================================== */
-
-  const users = useMemo<AdminUser[]>(() => {
-    return data?.adminUsers ?? []
-  }, [data?.adminUsers])
-
+  const users = useMemo<AdminUser[]>(() => data?.adminUsers ?? [], [data])
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    return users.filter((u) => {
-      const entry = `${u.name ?? ''} ${u.email}`.toLowerCase()
-      return entry.includes(q)
-    })
+    return users.filter((u) =>
+      `${u.name ?? ''} ${u.email}`.toLowerCase().includes(q)
+    )
   }, [users, search])
 
-  /* PAGE SIZE */
   const PAGE_SIZE = 10
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const pageData = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   useEffect(() => setPage(1), [search])
 
-  /* ======================================================
-      LOADING / ERROR
-  ====================================================== */
-
   if (loading) return <Loader />
-  if (error) return <Text color="red">Error: {error.message}</Text>
+  if (error) return <Text c="red">{error.message}</Text>
 
-  /* ======================================================
-      RENDER UI
-  ====================================================== */
+  /* =======================
+     GLASS TOKENS
+  ======================= */
+  const glassBg = isDark ? 'rgba(20,20,28,0.55)' : 'rgba(255,255,255,0.65)'
+
+  const border = isDark
+    ? '1px solid rgba(255,255,255,0.12)'
+    : '1px solid rgba(0,0,0,0.08)'
 
   return (
-    <Card p="lg">
+    <Box
+      p="lg"
+      style={{
+        background: glassBg,
+        backdropFilter: 'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
+        border,
+        borderRadius: 20,
+      }}
+    >
+      {/* HEADER */}
       <Group justify="space-between" mb="md">
-        <Text fw={700} size="xl">
+        <Text fw={800} size="xl">
           Manage Users
         </Text>
 
         <Tooltip label="Search users">
-          <ActionIcon>
+          <ActionIcon variant="subtle">
             <IconUserSearch size={18} />
           </ActionIcon>
         </Tooltip>
       </Group>
 
-      {/* SEARCH BAR */}
+      {/* SEARCH */}
       <Group mb="md">
         <TextInput
           leftSection={<IconSearch size={16} />}
@@ -158,22 +153,22 @@ export default function AdminUsersPage() {
           onChange={(e) => setSearch(e.target.value)}
           style={{ flex: 1 }}
         />
-        <Button variant="outline" onClick={() => refetch()}>
+        <Button variant="light" onClick={() => refetch()}>
           Refresh
         </Button>
       </Group>
 
       {/* TABLE */}
-      <ScrollArea h={450}>
-        <Table striped highlightOnHover withColumnBorders>
+      <ScrollArea h={460}>
+        <Table highlightOnHover withRowBorders={false} verticalSpacing="sm">
           <thead>
             <tr>
               <th>ID</th>
-              <th>Name / Email</th>
+              <th>User</th>
               <th>Role</th>
               <th>Created</th>
               <th>Status</th>
-              <th>Actions</th>
+              <th />
             </tr>
           </thead>
 
@@ -182,22 +177,20 @@ export default function AdminUsersPage() {
               <tr key={u.id}>
                 <td>{u.id}</td>
                 <td>
-                  <div>
-                    <Text fw={600}>{u.name ?? '-'}</Text>
-                    <Text size="xs">{u.email}</Text>
-                  </div>
+                  <Text fw={600}>{u.name ?? '-'}</Text>
+                  <Text size="xs" c="dimmed">
+                    {u.email}
+                  </Text>
                 </td>
                 <td>{u.role}</td>
-                <td>{new Date(u.createdAt).toLocaleString()}</td>
+                <td>{new Date(u.createdAt).toLocaleDateString()}</td>
                 <td>
                   {u.isBanned ? (
                     <Badge color="red">BANNED</Badge>
                   ) : (
-                    <Badge color="green">Active</Badge>
+                    <Badge color="green">ACTIVE</Badge>
                   )}
                 </td>
-
-                {/* ACTION BUTTONS */}
                 <td>
                   <Group gap="xs">
                     {!u.isBanned ? (
@@ -211,7 +204,6 @@ export default function AdminUsersPage() {
                     ) : (
                       <Button
                         size="xs"
-                        color="blue"
                         onClick={() =>
                           unbanUser({ variables: { userId: u.id } })
                         }
@@ -222,7 +214,7 @@ export default function AdminUsersPage() {
 
                     <Button
                       size="xs"
-                      variant="outline"
+                      variant="subtle"
                       onClick={() => {
                         setSelectedUserId(u.id)
                         setModalOpen(true)
@@ -240,19 +232,28 @@ export default function AdminUsersPage() {
 
       {/* PAGINATION */}
       <Group justify="space-between" mt="md">
-        <Text size="sm">{filtered.length} results</Text>
+        <Text size="sm" c="dimmed">
+          {filtered.length} users
+        </Text>
         <Pagination total={totalPages} value={page} onChange={setPage} />
       </Group>
 
-      {/* MODAL FOR USER ACTIVITY */}
+      {/* MODAL */}
       <Modal
         opened={modalOpen}
         onClose={() => setModalOpen(false)}
         size="lg"
-        title="User Activity"
+        centered
+        styles={{
+          content: {
+            background: glassBg,
+            backdropFilter: 'blur(18px)',
+            border,
+          },
+        }}
       >
         {selectedUserId && <AdminUserActivityModal userId={selectedUserId} />}
       </Modal>
-    </Card>
+    </Box>
   )
 }

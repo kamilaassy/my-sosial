@@ -1,8 +1,10 @@
-import { Card, Group, Text, Button } from '@mantine/core'
+import { Group, Text, Button } from '@mantine/core'
 
 import { navigate, routes } from '@redwoodjs/router'
 import { useMutation } from '@redwoodjs/web'
 import { toast } from '@redwoodjs/web/toast'
+
+import { GlassCard } from 'src/components/ui/GlassCard'
 
 const BAN_USER = gql`
   mutation BanUser($userId: Int!) {
@@ -40,22 +42,8 @@ export const AdminControls = ({
   })
 
   return (
-    <Card
-      withBorder
-      p="lg"
-      radius="md"
-      mb="lg"
-      style={{
-        background: 'var(--mantine-color-purplelux-1)',
-        borderColor: 'var(--mantine-color-purplelux-3)',
-      }}
-    >
-      <Text
-        fw={700}
-        mb="sm"
-        size="lg"
-        style={{ color: 'var(--mantine-color-purplelux-9)' }}
-      >
+    <GlassCard radius={20} padding="lg" mb="lg">
+      <Text fw={700} mb="sm" size="lg">
         Admin Controls
       </Text>
 
@@ -79,42 +67,27 @@ export const AdminControls = ({
           </Button>
         )}
 
-        {/* View Reports about this user */}
+        {/* Reports about this user */}
         <Button
           variant="outline"
           onClick={() => navigate(`/admin/reports?filterUserId=${userId}`)}
-          style={{
-            borderColor: 'var(--mantine-color-purplelux-4)',
-            color: 'var(--mantine-color-purplelux-8)',
-          }}
         >
           Reports About User
         </Button>
 
-        {/* View Reports made by this user */}
+        {/* Reports made by this user */}
         <Button
           variant="outline"
           onClick={() => navigate(`/admin/reports?reporterId=${userId}`)}
-          style={{
-            borderColor: 'var(--mantine-color-purplelux-4)',
-            color: 'var(--mantine-color-purplelux-8)',
-          }}
         >
           Reports Made By User
         </Button>
 
         {/* Go to Admin Panel */}
-        <Button
-          variant="light"
-          onClick={() => navigate(routes.adminReports())}
-          style={{
-            background: 'var(--mantine-color-purplelux-0)',
-            color: 'var(--mantine-color-purplelux-7)',
-          }}
-        >
+        <Button variant="light" onClick={() => navigate(routes.adminReports())}>
           Admin Panel
         </Button>
       </Group>
-    </Card>
+    </GlassCard>
   )
 }

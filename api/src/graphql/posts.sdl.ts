@@ -30,6 +30,7 @@ export const schema = gql`
   input CreatePostInput {
     content: String
     imageUrl: String
+    imageBase64: String
   }
 
   input UpdatePostInput {

@@ -19,46 +19,6 @@ const CREATE_COMMENT = gql`
   mutation CreateComment($input: CreateCommentInput!) {
     createComment(input: $input) {
       id
-      content
-      postId
-      authorId
-      parentId
-      createdAt
-      updatedAt
-
-      author {
-        id
-        name
-        email
-        avatarUrl
-      }
-
-      commentLikes {
-        id
-        userId
-      }
-
-      replies {
-        id
-        content
-        postId
-        authorId
-        parentId
-        createdAt
-        updatedAt
-
-        author {
-          id
-          name
-          email
-          avatarUrl
-        }
-
-        commentLikes {
-          id
-          userId
-        }
-      }
     }
   }
 `
@@ -79,8 +39,16 @@ export default function CommentForm({ postId, parentId = null, onSuccess }) {
     },
   })
 
+  const glassSoft = isDark
+    ? 'rgba(34, 34, 34, 0.81)'
+    : 'rgba(233, 221, 221, 0.82)'
+
+  const textColor = isDark
+    ? theme.colors.purplelux[0]
+    : theme.colors.purplelux[9]
+
   // ==========================
-  // SEND HANDLER FIXED
+  // SEND
   // ==========================
   const handleSend = () => {
     if (!content.trim()) return
@@ -90,15 +58,15 @@ export default function CommentForm({ postId, parentId = null, onSuccess }) {
         input: {
           content: content.trim(),
           postId,
-          ...(parentId ? { parentId } : {}), // <-- FIX: tidak kirim null
+          ...(parentId ? { parentId } : {}),
         },
       },
     })
   }
 
   return (
-    <Group mt="md" align="flex-end">
-      {/* INPUT */}
+    <Group mt="md" align="flex-end" gap="sm">
+      {/* TEXTAREA (GLASS) */}
       <Textarea
         value={content}
         onChange={(e) => setContent(e.currentTarget.value)}
@@ -109,18 +77,15 @@ export default function CommentForm({ postId, parentId = null, onSuccess }) {
         radius="md"
         styles={{
           input: {
-            backgroundColor: isDark
-              ? theme.colors.purplelux[8]
-              : theme.colors.purplelux[0],
-            borderColor: isDark
-              ? theme.colors.purplelux[6]
-              : theme.colors.purplelux[3],
-            color: isDark
-              ? theme.colors.purplelux[1]
-              : theme.colors.purplelux[9],
-            borderRadius: 12,
-            paddingTop: 10,
-            paddingBottom: 10,
+            background: glassSoft,
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: isDark
+              ? 'rgba(34, 34, 34, 0.81)'
+              : 'rgba(233, 221, 221, 0.82)',
+            color: textColor,
+            borderRadius: 14,
+            padding: '10px 14px',
           },
         }}
         style={{ flex: 1 }}
@@ -129,18 +94,17 @@ export default function CommentForm({ postId, parentId = null, onSuccess }) {
       {/* SEND BUTTON */}
       <ActionIcon
         radius="xl"
-        size={38}
+        size={40}
         onClick={handleSend}
         disabled={!content.trim() || loading}
         style={{
-          backgroundColor: !content.trim()
-            ? 'rgba(150,150,150,0.2)'
-            : isDark
-              ? theme.colors.purplelux[6]
-              : theme.colors.purplelux[7],
-          color: theme.white,
-          transition: '0.2s',
+          background: !content.trim() ? glassSoft : theme.colors.purplelux[5],
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          color: 'white',
+          opacity: !content.trim() ? 0.5 : 1,
           cursor: !content.trim() ? 'not-allowed' : 'pointer',
+          transition: '0.15s ease',
         }}
       >
         <IconSend size={18} />

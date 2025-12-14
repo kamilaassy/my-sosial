@@ -1,9 +1,11 @@
 import { useState } from 'react'
 
-import { TextInput, Box, Avatar, Paper, Group, Text } from '@mantine/core'
+import { TextInput, Box, Avatar, Group, Text } from '@mantine/core'
 
+import { navigate, routes } from '@redwoodjs/router'
 import { useQuery } from '@redwoodjs/web'
 
+import { GlassCard } from 'src/components/ui/GlassCard'
 import { SEARCH_USERS } from 'src/graphql/searchUsers'
 
 export default function SearchUser() {
@@ -11,13 +13,12 @@ export default function SearchUser() {
 
   const { data, refetch } = useQuery(SEARCH_USERS, {
     variables: { query: '', skip: 0, take: 10 },
-    skip: true, // <- penting agar tidak auto-run
-    fetchPolicy: 'no-cache', // biar tidak cache hasil lama
+    skip: true,
+    fetchPolicy: 'no-cache',
   })
 
   const handleChange = (value: string) => {
     setQuery(value)
-
     if (value.trim().length === 0) return
 
     refetch({
@@ -37,36 +38,41 @@ export default function SearchUser() {
       />
 
       {data?.searchUsers && query.length > 0 && (
-        <Paper
-          shadow="md"
-          p="sm"
+        <Box
           style={{
             position: 'absolute',
-            top: 50,
+            top: 54,
             left: 0,
             width: '100%',
-            zIndex: 100,
+            zIndex: 2000, // aman, di bawah navbar
           }}
         >
-          {data.searchUsers.length === 0 && (
-            <Text size="sm" c="dimmed">
-              No users found
-            </Text>
-          )}
+          <GlassCard padding="sm">
+            {data.searchUsers.length === 0 && (
+              <Text size="sm" c="dimmed">
+                No users found
+              </Text>
+            )}
 
-          {data.searchUsers.map((user) => (
-            <Group key={user.id} p="xs" style={{ cursor: 'pointer' }}>
-              <Avatar src={user.avatarUrl || undefined} radius="xl" />
+            {data.searchUsers.map((user) => (
+              <Group
+                key={user.id}
+                p="xs"
+                style={{ cursor: 'pointer' }}
+                onClick={() => navigate(routes.profile({ id: user.id }))}
+              >
+                <Avatar src={user.avatarUrl || undefined} radius="xl" />
 
-              <Box>
-                <Text fw={600}>{user.name || user.email}</Text>
-                <Text size="xs" c="dimmed">
-                  {user.email}
-                </Text>
-              </Box>
-            </Group>
-          ))}
-        </Paper>
+                <Box>
+                  <Text fw={600}>{user.name || user.email}</Text>
+                  <Text size="xs" c="dimmed">
+                    {user.email}
+                  </Text>
+                </Box>
+              </Group>
+            ))}
+          </GlassCard>
+        </Box>
       )}
     </Box>
   )
